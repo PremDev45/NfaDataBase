@@ -296,3 +296,30 @@ entity NfaWorkflowHistory {
         NfaWorkflowHistoryToNfaDetails : Association to one NfaDetails
                                              on NfaWorkflowHistoryToNfaDetails.PanNumber = PanNumber;
 }
+entity Rules{
+    key ruleName:String;
+    activeStatus:Boolean;
+    RulesToRulesCondition:Composition of many RulesCondition on RulesToRulesCondition.RulesConditionToRules = $self;
+    RulesToRulesLevels:Composition of many RulesLevels on RulesToRulesLevels.RulesLevelsToRules = $self;
+}
+entity RulesCondition{
+    key field:String;
+    key ruleName:String;
+    comparator:String;
+    value1:String;
+    value2:String;
+    RulesConditionToRules:Association to one Rules on RulesConditionToRules.ruleName=ruleName;
+}
+entity RulesLevels {
+    key ruleName:String;
+    key level:Int16;
+    RulesLevelsToRules:Association to one Rules on RulesLevelsToRules.ruleName=ruleName;
+    RulesLevelsToRulesApprovers:Composition of many RulesApprovers on RulesLevelsToRulesApprovers.RulesApproversToRulesLevels = $self; 
+}
+entity  RulesApprovers{
+    key ruleName:String;
+    key level:Int16;
+    key EmployeeID                     : String;
+    EmployeeName                   : String;
+    RulesApproversToRulesLevels:Association to one RulesLevels on RulesApproversToRulesLevels.ruleName=ruleName and RulesApproversToRulesLevels.level=level;
+}

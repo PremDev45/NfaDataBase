@@ -9,6 +9,8 @@ service NfaForm {
     entity NfaAttachments        as projection on db.NfaAttachments;
     entity NfaCommentsHistory    as projection on db.NfaCommentsHistory;
     entity NfaWorkflowHistory    as projection on db.NfaWorkflowHistory;
+    entity Rules as projection on db.Rules;
+    function getDataForUserAndProject(user:String,project:String) returns String;
 }
 service NfaApproval {
     entity NfaDetails            as projection on db.NfaDetails where Status = 'Pending For Approval' and exists (

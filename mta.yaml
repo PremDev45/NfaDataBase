@@ -3,90 +3,140 @@ ID: NfaDb
 description: A simple CAP project.
 version: 1.0.0
 modules:
-  - name: NfaDb-srv
-    type: nodejs
-    path: gen/srv
-    requires:
-      - name: NfaDb-db
-    provides:
-      - name: srv-api
-        properties:
-          srv-url: ${default-url}
+- name: NfaDb-srv
+  type: nodejs
+  path: gen/srv
+  requires:
+  - name: NfaDb-db
+  - name: uaa_NfaDb
+  - name: MyDestinationSrv
+  provides:
+  - name: srv-api
+    properties:
+      srv-url: ${default-url}
+  parameters:
+    buildpack: nodejs_buildpack
+    instances: 1
+  build-parameters:
+    builder: npm-ci
+- name: NfaDb-db-deployer
+  type: hdb
+  path: gen/db
+  requires:
+  - name: NfaDb-db
+  parameters:
+    buildpack: nodejs_buildpack
+- name: NfaDb-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: NfaDb-destination-service
     parameters:
-      buildpack: nodejs_buildpack
-      instances: 1
-    build-parameters:
-      builder: npm-ci
-  - name: NfaDb-db-deployer
-    type: hdb
-    path: gen/db
-    requires:
-      - name: NfaDb-db
+      content-target: true
+  - name: NfaDb_html_repo_host
     parameters:
-      buildpack: nodejs_buildpack
-  - name: NfaDb-destination-content
-    type: com.sap.application.content
-    requires:
-      - name: NfaDb-destination-service
-        parameters:
-          content-target: true
-      - name: NfaDb_html_repo_host
-        parameters:
-          service-key:
-            name: NfaDb_html_repo_host-key
-      - name: uaa_NfaDb
-        parameters:
-          service-key:
-            name: uaa_NfaDb-key
+      service-key:
+        name: NfaDb_html_repo_host-key
+  - name: uaa_NfaDb
     parameters:
-      content:
+      service-key:
+        name: uaa_NfaDb-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: Nfa_NfaDb_html_repo_host
+          ServiceInstanceName: NfaDb-html5-app-host-service
+          ServiceKeyName: NfaDb_html_repo_host-key
+          sap.cloud.service: Nfa
+        - Authentication: OAuth2UserTokenExchange
+          Name: Nfa_uaa_NfaDb
+          ServiceInstanceName: NfaDb-xsuaa-service
+          ServiceKeyName: uaa_NfaDb-key
+          sap.cloud.service: Nfa
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+- name: NfaDb-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: NfaDb_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - nfadbapp.zip
+      name: nfadbapp
+      target-path: resources/
+- name: nfadbapp
+  type: html5
+  path: app/nfadbapp
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: NfaDb-db
+  type: com.sap.xs.hdi-container
+  parameters:
+    service: hana
+    service-plan: hdi-shared
+- name: MyDestinationSrv
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: destination
+    service-plan: lite
+- name: NfaDb-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
         instance:
           destinations:
-            - Name: Nfa_NfaDb_html_repo_host
-              ServiceInstanceName: NfaDb-html5-app-host-service
-              ServiceKeyName: NfaDb_html_repo_host-key
-              sap.cloud.service: Nfa
-            - Authentication: OAuth2UserTokenExchange
-              Name: Nfa_uaa_NfaDb
-              ServiceInstanceName: NfaDb-xsuaa-service
-              ServiceKeyName: uaa_NfaDb-key
-              sap.cloud.service: Nfa
-          existing_destinations_policy: ignore
-    build-parameters:
-      no-source: true
-resources:
-  - name: NfaDb-db
-    type: com.sap.xs.hdi-container
-    parameters:
-      service: hana
-      service-plan: hdi-shared
-  - name: NfaDb-destination-service
-    type: org.cloudfoundry.managed-service
-    parameters:
-      config:
-        HTML5Runtime_enabled: true
-        version: 1.0.0
-      service: destination
-      service-name: NfaDb-destination-service
-      service-plan: lite
-  - name: NfaDb_html_repo_host
-    type: org.cloudfoundry.managed-service
-    parameters:
-      service: html5-apps-repo
-      service-name: NfaDb-html5-app-host-service
-      service-plan: app-host
-  - name: uaa_NfaDb
-    type: org.cloudfoundry.managed-service
-    parameters:
-      path: ./xs-security.json
-      service: xsuaa
-      service-name: NfaDb-xsuaa-service
-      service-plan: application
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          - Authentication: NoAuthentication
+            HTML5.DynamicDestination: true
+            HTML5.ForwardAuthToken: true
+            Name: srv-api
+            ProxyType: Internet
+            Type: HTTP
+            URL: ~{srv-api/srv-url}
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: NfaDb-destination-service
+    service-plan: lite
+  requires:
+  - name: srv-api
+- name: NfaDb_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: NfaDb-html5-app-host-service
+    service-plan: app-host
+- name: uaa_NfaDb
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: NfaDb-xsuaa-service
+    service-plan: application
 parameters:
+  deploy_mode: html5-repo
   enable-parallel-deployments: true
 build-parameters:
   before-all:
-    - builder: custom
-      commands:
-        - npm ci
-        - npx cds build --production
+  - builder: custom
+    commands:
+    - npm ci
+    - npx cds build --production

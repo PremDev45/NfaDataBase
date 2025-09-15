@@ -6,9 +6,11 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@cap-js/hana": "^2",
+    "@sap-cloud-sdk/http-client": "^4.1.1",
+    "@sap-cloud-sdk/resilience": "^4.1.1",
     "@sap/cds": "^9",
-    "express": "^4",
-    "@cap-js/hana": "^2"
+    "express": "^4"
   },
   "engines": {
     "node": ">=20"
@@ -16,19 +18,43 @@
   "devDependencies": {
     "@cap-js/cds-types": "^0.13.0",
     "@cap-js/sqlite": "^2",
-    "@sap/cds-dk": ">=8"
+    "@sap/cds-dk": ">=8",
+    "cds-plugin-ui5": "^0.13.0",
+    "mbt": "^1.2.29",
+    "rimraf": "^5.0.5"
   },
   "scripts": {
-    "start": "cds-serve"
+    "start": "cds-serve",
+    "watch-nfadbapp": "cds watch --open nfadbapp/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "undeploy": "cf undeploy NfaDb --delete-services --delete-service-keys --delete-service-brokers",
+    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
   },
   "cds": {
-
+    "requires": {
+      "destinations":true,
+      "TestApi": {
+        "kind": "odata",
+        "credentials": {
+          "destination": "DEMO"
+        }
+      },
+      "NfaAriba": {
+        "kind": "odata",
+        "credentials": {
+          "destination": "NfaAriba"
+        }
+      }
+    },
     "[production]": {
       "requires": {
-        "auth":{
+        "auth": {
           "kind": "xsuaa"
         }
       }
     }
-  }
+  },
+  "workspaces": [
+    "app/*"
+  ]
 }

@@ -1,0 +1,13 @@
+<mvc:View controllerName="nfadbapp.controller.View1"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+    <Page id="page" title="{i18n>title}">
+        <IllustratedMessage id="IllustratedMessage1" title=" " 
+    description="Hey {DocId>/userName}, Please wait while we prepare your data for the project - {DocId>/projectId}"
+    illustrationType="sapIllus-BeforeSearch"
+    illustrationSize="Auto"></IllustratedMessage>
+
+
+<HBox id="_IDGenHBox" justifyContent="Center"><BusyIndicator id="_IDGenBusyIndicator" busy="true" ></BusyIndicator></HBox>
+    </Page>
+</mvc:View>
