@@ -6,7 +6,7 @@ using {
 } from '@sap/cds/common';
 
 entity NfaDetails {
-    key PanNumber                                  : String default 'def';
+    key NfaNumber                                  : String default 'def';
         //listPage//
         BUORPurchasingGroup                        : String;
         PlantCode                                  : String;
@@ -99,7 +99,7 @@ entity NfaDetails {
 
 entity NfaEventHistory {
     key idd                         : String;
-    key PanNumber                   : String;
+    key NfaNumber                   : String;
         //pan web event//
         EventNo                     : String;
         Number                      : String;
@@ -114,12 +114,12 @@ entity NfaEventHistory {
         // AuctionDetails              : String;
 
         NfaEventHistoryToNfaDetails : Association to one NfaDetails
-                                          on NfaEventHistoryToNfaDetails.PanNumber = PanNumber;
+                                          on NfaEventHistoryToNfaDetails.NfaNumber = NfaNumber;
 }
 
 entity NfaVendorData {
     key ProposedVendorCode                              : String;
-    key PanNumber                                       : String;
+    key NfaNumber                                       : String;
         //vendor response details//
         AwardedVendor                                   : String;
         VendorName                                      : String;
@@ -216,7 +216,7 @@ entity NfaVendorData {
         // Others                                                            : LargeString;
 
         NfaVendorDataToNfaDetails                       : Association to one NfaDetails
-                                                              on NfaVendorDataToNfaDetails.PanNumber = PanNumber;
+                                                              on NfaVendorDataToNfaDetails.NfaNumber = NfaNumber;
         NfaVendorDataToNfaVendorItemsDetails            : Composition of many NfaVendorItemsDetails
                                                               on NfaVendorDataToNfaVendorItemsDetails.NfaVendorItemsDetailsToNfaVendorData = $self;
 
@@ -225,7 +225,7 @@ entity NfaVendorData {
 
 entity NfaVendorItemsDetails {
 
-    key PanNumber                            : String;
+    key NfaNumber                            : String;
     key ProposedVendorCode                   : String;
     key ItemCode                             : String;
         //item Details//
@@ -244,14 +244,14 @@ entity NfaVendorItemsDetails {
 
         NfaVendorItemsDetailsToNfaVendorData : Association to one NfaVendorData
                                                    on  NfaVendorItemsDetailsToNfaVendorData.ProposedVendorCode = ProposedVendorCode
-                                                   and NfaVendorItemsDetailsToNfaVendorData.PanNumber          = PanNumber;
+                                                   and NfaVendorItemsDetailsToNfaVendorData.NfaNumber          = NfaNumber;
 
 }
 
 entity NfaAttachments : cuid, managed {
-    key PanNumber                  : String;
+    key NfaNumber                  : String;
 
-        @Core.MediaType  : mediaType
+        @Core.MediaType  : MediaType
         Content                    : LargeBinary;
 
         @Core.IsMediaType: true
@@ -261,26 +261,25 @@ entity NfaAttachments : cuid, managed {
         Url                        : String;
 
         NfaAttachmentsToNfaDetails : Association to one NfaDetails
-                                         on NfaAttachmentsToNfaDetails.PanNumber = PanNumber;
+                                         on NfaAttachmentsToNfaDetails.NfaNumber = NfaNumber;
 }
 
 entity NfaCommentsHistory : managed {
     key Idd                            : UUID;
-    key PanNumber                      : String;
+    key NfaNumber                      : String;
         User                           : String;
         Comments                       : LargeString;
         Status                         : String;
         NfaCommentsHistoryToNfaDetails : Association to one NfaDetails
-                                             on NfaCommentsHistoryToNfaDetails.PanNumber = PanNumber;
+                                             on NfaCommentsHistoryToNfaDetails.NfaNumber = NfaNumber;
 }
 
 entity NfaWorkflowHistory {
-    key Idd                            : UUID;
-    key PanNumber                      : String;
+    key NfaNumber                      : String;
         //workflow History//
-        level                          : String;
+    key level                          : Int16;
+    key  EmployeeID                     : String;
         EmployeeName                   : String;
-        EmployeeID                     : String;
         Status                         : String;
         ApprovedBy                     : String;
         DaysTaken                      : String;
@@ -294,7 +293,7 @@ entity NfaWorkflowHistory {
         // Remarks                : String;
 
         NfaWorkflowHistoryToNfaDetails : Association to one NfaDetails
-                                             on NfaWorkflowHistoryToNfaDetails.PanNumber = PanNumber;
+                                             on NfaWorkflowHistoryToNfaDetails.NfaNumber = NfaNumber;
 }
 entity Rules{
     key ruleName:String;
@@ -322,4 +321,8 @@ entity  RulesApprovers{
     key EmployeeID                     : String;
     EmployeeName                   : String;
     RulesApproversToRulesLevels:Association to one RulesLevels on RulesApproversToRulesLevels.ruleName=ruleName and RulesApproversToRulesLevels.level=level;
+}
+entity  Approvers{
+    key EmployeeID                     : String;
+    EmployeeName                   : String;
 }

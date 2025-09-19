@@ -1,3 +1,2 @@
-### GET request to trigger getDataForUserAndProject
-GET http://localhost:4004/odata/v4/nfa-form/getDataForUserAndProject()
+GET http://localhost:33859/odata/v4/nfa-form/getDataForUserAndProject(user='user@example.com',project='WS79052482')
 Accept: application/json
