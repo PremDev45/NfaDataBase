@@ -47,6 +47,8 @@ if (isMainThread) {
         var DocumentItemsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/items/pages/<pageNo>"
         //supplierBids
         var DocumentSupplierBidsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/supplierBids/<sName>"
+        //rounds
+        var DocumentRoundsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/rounds";
         //supplier data pagination api's
         var SupplierQuestionariesUrl = "https://openapi.au.cloud.ariba.com/api/supplierdatapagination/v4/prod//vendors/<vendorId>/workspaces/questionnaires/qna"
 
@@ -63,7 +65,7 @@ if (isMainThread) {
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
             /////*****************LET*****************/////
-            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData, WokerThreadsResults
+            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData, WokerThreadsResults,WokerThreadsResults1
 
             /////*****************LET*****************/////
 
@@ -72,13 +74,13 @@ if (isMainThread) {
             var ProjectID, TaskID, projCurrency, WebPublishDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID
 
             //Initialize as Array
-            var WorkerPromises = [], DocumentScenariosUrlResult = [], VendorIds = [], Supplier = [];
+            var WorkerPromises = [], DocumentScenariosUrlResult = [], VendorIds = [], Supplier = [], RoundsData = []
 
             //Initialize as Objects
             var SupplierInvitationsUrlResult = {}
 
             //Initialize as Empty 
-            var SourcingProjectDescription = "", SourcingProjectBaseLinespend = "", DocumentScenariosTotAwardPrice = "", SupplierName = ""
+            var SourcingProjectDescription = "", SourcingProjectBaseLinespend = "", DocumentScenariosTotAwardPrice = "", SupplierName = "", VendorID = "", PVCode = "", SmID = "", SupplierData = "",DocumentSupplierBidResult = ""
             /////-----------------VAR-----------------/////
 
             //Initialize as Numbers
@@ -212,18 +214,35 @@ if (isMainThread) {
                         WorkerPromises = [];
                         if (Supplier.length) { //getting vendor details
                             for (let k = 0; k < Supplier.length; k++) {
-                                 SupplierName = Supplier[k].SupplierName;
-                                 if (VendorIds.length != 0) {
-                                     VendorID = VendorIds[k].SmVendorId;
-                                     PVcode = VendorIds[k].SmVendorId;
-                                     smid = VendorIds[k].SmVendorId;
-                                 }
-                                 else{
-                                    VendorID ='';
-                                    PVcode = '';
-                                 }
+                                SupplierName = Supplier[k].SupplierName;
+                                if (VendorIds.length != 0) {
+                                    VendorID = VendorIds[k].SmVendorId;
+                                    PVCode = VendorIds[k].SmVendorId;
+                                    SmID = VendorIds[k].SmVendorId;
+                                }
+                                else {
+                                    VendorID = "";
+                                    PVCode = "";
+                                }
+                                WorkerPromises.push(createWorker(DocumentSupplierBidsUrl.replace('<docId>', DocId).replace('<sName>', SupplierName), DocumentBase, 'DocumentSupplierBidsUrl'))
+                                WorkerPromises.push(createWorker(DocumentRoundsUrl.replace('<docId>', DocId), DocumentBase, 'DocumentRoundsUrl'))
+                                WorkerPromises.push(createWorker(SupplierQuestionariesUrl.replace('<vendorId>', VendorIds[k].SmVendorId), SupplierQuestionariesBase, 'SupplierQuestionariesUrl'))
+                                WokerThreadsResults1 = await Promise.all(WorkerPromises);
+                                if(WokerThreadsResults1.length)
+                                {
+                                      for (let i = 0; i < WokerThreadsResults1.length; i++) {
+                                        if (!Array.isArray(WokerThreadsResults1[i].payload) && (!(WokerThreadsResults1[i] instanceof Error))) {
+                                            SupplierData = WokerThreadsResults1[i];
+                                        }
+                                        else if (Array.isArray(WokerThreadsResults1[i].payload) && WokerThreadsResults1[i].path == 'DocumentSupplierBidsUrl' && (!(WokerThreadsResults1[i] instanceof Error))) {
+                                            DocumentSupplierBidResult = WokerThreadsResults1[i];
+                                        } else if (Array.isArray(WokerThreadsResults1[i].payload) && WokerThreadsResults1[i].path == 'DocumentRoundsUrl' && (!(WokerThreadsResults1[i] instanceof Error))) {
+                                            RoundsData = WokerThreadsResults1[i];
+                                        }
+                                    }
+                                }
                             }
-                        }   
+                        }
                     }
                 }
             }
