@@ -1,7 +1,7 @@
 const cds = require('@sap/cds');
 const { url } = require('node:inspector');
 const { Worker, workerData, parentPort, isMainThread } = require('node:worker_threads');
-// projectId = #WS79052482 ///// new one = #WS84836442
+// projectId = #WS79052482 ///// new one = #WS84836442 ////// #WS85279377
 if (isMainThread) {
     module.exports = cds.service.impl(async function () {
         let {
@@ -50,7 +50,11 @@ if (isMainThread) {
         //rounds
         var DocumentRoundsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/rounds";
         //supplier data pagination api's
-        var SupplierQuestionariesUrl = "https://openapi.au.cloud.ariba.com/api/supplierdatapagination/v4/prod//vendors/<vendorId>/workspaces/questionnaires/qna"
+        var SupplierQuestionariesUrl = "https://openapi.au.cloud.ariba.com/api/supplierdatapagination/v4/prod//vendors/<vendorId>/workspaces/questionnaires/qna";
+
+        /////////////*****NEW API TO CHECK VENDOR QUOTED AMOUNT IN EACH ROUND*********////////////////
+        var SuppierBidsInRounds = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/rounds/<roundNo>/supplierBids/<invitationId>"
+
 
         ///////////////////////////////////////Ariba URLS////////////////////////////////////////////
 
@@ -65,20 +69,23 @@ if (isMainThread) {
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
             /////*****************LET*****************/////
-            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails;
+            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds;
 
+            //Initialize as Array
+            let InsertEntriesRounds = []
             /////*****************LET*****************/////
 
 
+
             /////-----------------VAR-----------------/////
-            var ProjectID, TaskID, projCurrency, WebPublishDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID;
+            var ProjectID, TaskID, projCurrency, WebPublishDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID, RoundsPayload, LastId, SupplierCountRounds, SupplierDataWithRounds;
 
             //Initialize as Array
             var WorkerPromises = [], DocumentScenariosUrlResult = [], VendorIds = [], Supplier = [], RoundsData = [], SupplierDetails = [],
-                VendorNames = [], DocSupplierBidItems = [], PaymentDetails = [], SupplierCount1 = [], SupplierCountValue = [];
+                VendorNames = [], DocSupplierBidItems = [], PaymentDetails = [], SupplierCount1 = [], SupplierCountValue = [], SupplierWithRounds = [];
 
             //Initialize as Objects
-            var SupplierInvitationsUrlResult = {}, SupplierCount = {};
+            var SupplierInvitationsUrlResult = {}, SupplierCount = {}, SupplierRounds = {};
 
             //Initialize as Empty 
             var SourcingProjectDescription = "", SourcingProjectBaseLinespend = "", DocumentScenariosTotAwardPrice = "", SupplierName = "", VendorID = "", PVCode = "", SmID = "", SupplierData = "", DocumentSupplierBidResult = "", GstNo = "", CEScore = "", SupplierAdress = "", SupplierStreetName = "", SupplierRegion = "", SupplierPostalCode = "", SupplierCity = "", SupplierHouseID = "", SupplierCountry = "",
@@ -88,7 +95,7 @@ if (isMainThread) {
                 ContractBasicValue = "", ImportSupplyProposal = "", FTAEPCGValue = "", MonthlyQuantityValue = "", PostFactoNfaReasonValue = "", BusinessPlanPricingValue = "",
                 CLPPLastPurchaseAmount = "", CLPPLastPurchaseCurrency = "", FormattedCLPPLastPurchaseAmount = "", PriceJustificationValue = "", CardinalRulesValue = "", DeviationListValue = "", TermsOfPaymentValue = "", PackagingForwardingValue = "", LogisticsAmount = "", LogisticsCurrency = "", FormattedLogisticsAmount = "", InsuranceValue = "",
                 PenaltyQualityValue = "", PenaltyCriteriaValue = "", DeliveryLeadTimeValue = "", LiquidatedDamagesValue = "", LiquidatedDamagesClValue = "", PBGAndSDValue = "", PBGAndSDClValue = "", PenaltyForSafetySubcontractValue = "", OtherKeyTermsValue = "", RationaleL1Value = "", PricesValue = "",
-                VendorName= "", VendorAddress="",VendorInvitationId="",VendorUserId=""
+                VendorName = "", VendorAddress = "", VendorInvitationId = "", VendorUserId = ""
             /////-----------------VAR-----------------/////
 
             //Initialize as Numbers
@@ -865,7 +872,7 @@ if (isMainThread) {
                         ExistingNfaRecord = await SELECT.one.from(NfaDetails).where({ NfaNumber: DocId });
                         try {
                             if (!ExistingNfaRecord) {
-                                const InsertQueryForNfaDetails = await INSERT.into(NfaDetails).entries(InsertNfaDetailsBody);
+                                // const InsertQueryForNfaDetails = await INSERT.into(NfaDetails).entries(InsertNfaDetailsBody);
                                 console.log("Insert successful:", InsertQueryForNfaDetails);
                             } else {
                                 console.log("Record already exists for NfaNumber:", DocId);
@@ -875,83 +882,104 @@ if (isMainThread) {
                         }
 
                         try {
-                            // Step 1: Check if the record already exists
-                            const existingRecord = await SELECT.one.from('NfaEventHistory')
-                                .where({ NfaNumber: DocId, EventNo: req.data.EventNo });
-
-                            if (existingRecord) {
-                                console.log("Record already exists for NfaNumber:", req.data.NfaNumber);
-                                return;
+                            // Step 1: Get the max existing idd
+                            LastId = await SELECT.one.from('NfaEventHistory').columns('max(idd) as maxId');
+                            CurrentId = 1;
+                            if (LastId && LastId.maxId) {
+                                CurrentId = parseInt(LastId.maxId) + 1;
                             }
 
-                            // Step 2: Generate next idd
-                            const maxIdResult = await SELECT.one.from('NfaEventHistory').columns('max(idd) as maxId');
-                            let nextIdd = 1;
-                            if (maxIdResult && maxIdResult.maxId) {
-                                nextIdd = parseInt(maxIdResult.maxId) + 1;
+                            // Step 2: Prepare insert payloads
+                            Rounds = RoundsData.payload;
+
+
+                            Rounds.forEach((round, index) => {
+                                // Getting the supplier length
+                                SupplierCountRounds = round.suppliers.length;
+
+                                // Naming the first and last record as First and Last Published
+                                EventNo = "";
+                                if (index === 0) {
+                                    EventNo = "First Published";
+                                } else if (index === Rounds.length - 1) {
+                                    EventNo = "Last Published";
+                                }
+
+                                InsertEntriesRounds.push({
+                                    idd: (CurrentId++).toString(),                     // auto-increment idd
+                                    NfaNumber: DocId,                                // DocId coming from request
+                                    EventNo: EventNo,                                // first/last round only others will be null
+                                    Number: round.roundNumber.toString(),            // round number as string
+                                    Date: round.biddingEndDate,                      // assign last date of round
+                                    NumberOfVendorsParticipated: SupplierCountRounds.toString(), //Calculating the length of suppliers response
+                                    L1AmountObtained: "" 
+                                });
+                            });
+
+                            // Step 3: Insert all entries into the DB
+                            if (InsertEntriesRounds.length > 0) {
+                                // await INSERT.into('NfaEventHistory').entries(InsertEntriesRounds);
+                                console.log("Insert successful:", InsertEntriesRounds);
                             }
-
-                            // Step 3: Insert the new record
-                            // const insertData = {
-                            //     ...req.data,
-                            //     idd: nextIdd.toString() // store as string, since your entity defines it as String
-                            // };
-
-                            // const inserted = await INSERT.into('NfaEventHistory').entries(insertData);
-                            console.log("Insert successful:", inserted);
 
                         } catch (error) {
                             console.error("Error inserting into NfaEventHistory:", error);
                         }
-                        var rounds = RoundsData.payload
-                        // if (rounds && rounds.length > 0) {
-                        //     // Step 1: Find the minimum and maximum roundNumbers
-                        //     const roundNumbers = rounds.map(r => r.roundNumber);
-                        //     const minRoundNumber = Math.min(...roundNumbers);
-                        //     const maxRoundNumber = Math.max(...roundNumbers);
 
-                        //     // Step 2: Find first and last round records
-                        //     if (!minRoundNumber === maxRoundNumber) {
-                        //         const firstRound = rounds.find(r => r.roundNumber === minRoundNumber);
-                        //         const lastRound = rounds.find(r => r.roundNumber === maxRoundNumber);
-                        //     }
 
-                        //     // Step 3: Store in an array
-                        //     const firstAndLastRounds = [firstRound, lastRound];
 
-                        //     console.log(firstAndLastRounds);
+
+
+
+
+
+
+
+
+
+                        ////akshay and ajay
+                        ////////////////************Vendor Details********************///////////////////////
+                        // for(i=0;i<WokerThreadsResults[3].payload.length;i++)
+                        // {
+                        //     VendorName = WokerThreadsResults[3].payload[i].organization.name;
+                        //     VendorAddress = WokerThreadsResults[3].payload[i].organization.address.city;
+                        //     VendorInvitationId = WokerThreadsResults[3].payload[i].invitationId;
+                        //     VendorUserId = WokerThreadsResults[3].payload[i].userId;
                         // }
-                        // let InsertNfaDetailsBody = {
-                        //     "idd": "EVT001",
-                        //     "NfaNumber": "NFA001",
-                        //     "EventNo": "E-1001",
-                        //     "Number": "01",
-                        //     "Date": "2025-09-21",
-                        //     "NumberOfVendorsParticipated":SupplierCountValue.SupplierCount,
-                        //     "L1AmountObtained": DocumentScenariosTotAwardPrice
-                        // }
-                        // await INSERT.into(NfaEventHistory).entries(InsertNfaEventHistoryBody);
-                    }
-                    rounds.forEach((round, index) => {
-                        // Count suppliers for this round
-                        const supplierCount = round.suppliers.length;
-                        console.log(`Round ${round.roundNumber} has ${supplierCount} supplier(s)`);
 
-                        // Capture first and last round in the same loop
-                        if (index === 0) firstRound = round;
-                        if (index === rounds.length - 1) lastRound = round;
-                    });
 
-                    ////akshay and ajay
-                    ////////////////************Vendor Details********************///////////////////////
-                    for(i=0;i<WokerThreadsResults[3].payload.length;i++)
-                    {
-                        VendorName = WokerThreadsResults[3].payload[i].organization.name;
-                        VendorAddress = WokerThreadsResults[3].payload[i].organization.address.city;
-                        VendorInvitationId = WokerThreadsResults[3].payload[i].invitationId;
-                        VendorUserId = WokerThreadsResults[3].payload[i].userId;
+                        /////////////********STORING MAX ROUND***************/////////////
+                        RoundsPayload = RoundsData.payload.map(item => item.roundNumber);
+                        const MaxRound = RoundsPayload.length > 0 ? Math.max(...RoundsPayload) : 0;
+                        const AllSuppliers = Array.from(
+                            new Set(RoundsData.payload.flatMap(p => p.suppliers))
+                        );
+                       
+                            // RoundsSuppliers = RoundsData.payload[a].suppliers;
+                            AllSuppliers.forEach(supplier => {
+                                 for (var a = 1; a <= RoundsData.payload.length; a++) {
+                                // loop through rounds in order
+                                        SupplierWithRounds.push({
+                                            Supplier: supplier,
+                                            Rounds: a
+                                        });
+                                         }
+                            });
+                       
+
+
+                        /////////////////**********GET CALL FOR SUPPLIER BID FOR EACH ROUND*****************////////////
+                        for (const item of SupplierWithRounds) {
+                            console.log(item)
+                             WorkerPromises.push(createWorker(SuppierBidsInRounds.replace('<docId>', DocId).replace('<roundNo>',item.Rounds).replace('<invitationId>',item.Supplier), DocumentBase, 'DocumentSupplierInvitationsUrl'))
+                             SupplierDataWithRounds = await Promise.all(WorkerPromises)
+                        }
+
+
+
+                        ////////////////************Vendor Details********************///////////////////////
+
                     }
-                    ////////////////************Vendor Details********************///////////////////////
 
                 }
             }
