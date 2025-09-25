@@ -44,7 +44,7 @@ if (isMainThread) {
         //supplierInvitations
         var DocumentSupplierInvitationsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/supplierInvitations"
         //items with pages
-        var DocumentItemsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/items/pages/<pageNo>"
+        var DocumentItemsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/items"
         //supplierBids
         var DocumentSupplierBidsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/supplierBids/<sName>"
         //rounds
@@ -69,7 +69,7 @@ if (isMainThread) {
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
             /////*****************LET*****************/////
-            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds;
+            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData = 0, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds, RfpPublishDate;
 
             //Initialize as Array
             let InsertEntriesRounds = []
@@ -78,24 +78,25 @@ if (isMainThread) {
 
 
             /////-----------------VAR-----------------/////
-            var ProjectID, TaskID, projCurrency, WebPublishDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID, RoundsPayload, LastId, SupplierCountRounds, SupplierDataWithRounds;
+            var ProjectID, TaskID, projCurrency, WebPublishDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID, RoundsPayload, LastId, SupplierCountRounds, BidRank, SupplierBidName;
 
             //Initialize as Array
-            var WorkerPromises = [], DocumentScenariosUrlResult = [], VendorIds = [], Supplier = [], RoundsData = [], SupplierDetails = [],
-                VendorNames = [], DocSupplierBidItems = [], PaymentDetails = [], SupplierCount1 = [], SupplierCountValue = [], SupplierWithRounds = [];
+            var WorkerPromises = [], WorkerPromises1 = [], SupplierBidsWorker = [], DocumentScenariosUrlResult = [], VendorIds = [], Supplier = [], RoundsData = [], SupplierDetails = [],
+                VendorNames = [], DocSupplierBidItems = [], PaymentDetails = [], SupplierCount1 = [], SupplierCountValue = [], SupplierWithRounds = [], SupplierDataWithRounds = [],
+                ItemsDetails = [], VendorDetailsArr = [], ItemsPrice = [], EventHistory = [];
 
             //Initialize as Objects
             var SupplierInvitationsUrlResult = {}, SupplierCount = {}, SupplierRounds = {};
 
             //Initialize as Empty 
-            var SourcingProjectDescription = "", SourcingProjectBaseLinespend = "", DocumentScenariosTotAwardPrice = "", SupplierName = "", VendorID = "", PVCode = "", SmID = "", SupplierData = "", DocumentSupplierBidResult = "", GstNo = "", CEScore = "", SupplierAdress = "", SupplierStreetName = "", SupplierRegion = "", SupplierPostalCode = "", SupplierCity = "", SupplierHouseID = "", SupplierCountry = "",
+            var SourcingProjectDescription = "", SourcingProjectBaseLinespend = "", DocumentScenariosTotAwardPrice = "", SupplierName = "", VendorID = "", PVCode = "", SmID = "", SupplierData = "", GstNo = "", CEScore = "", SupplierAdress = "", SupplierStreetName = "", SupplierRegion = "", SupplierPostalCode = "", SupplierCity = "", SupplierHouseID = "", SupplierCountry = "",
                 SupplierContactPhone = "", SupplierMobilePhone = "", SupplierMail = "", SupplierLastName = "", SupplierFirstName = "", SupplierContact = "", SubmissionDate = "", DocSupBidInvitationID = "", PayDate = "", AmendmentValue = "", SupplierValueAmount = "", SupplierValueCurrency = "",
                 ExistingPoNumberValue = "", TotalNFAAmount = "", TotalNFAAmountCurrency = "", ContractPeriodValue = "", BudgetValue = "", OrderTypePartiesValue = "", FormattedTotalNFAAmount = "", FormattedSupplierValueAmount = "", RationalValue = "",
                 VendorsTurnOverAmount = "", VendorsTurnOverCurrency, FormattedVendorsTurnOverAmount = "", VendorsSpendAmount = "", VendorsSpendCurrency = "", FormattedVendorsSpendAmount = "", RationalToDependentPartnerValue = "", NewInitiativeBestPracticesValue = "", NegotiationCommitteValue = "", InternalSLAsKPIsValue = "",
                 ContractBasicValue = "", ImportSupplyProposal = "", FTAEPCGValue = "", MonthlyQuantityValue = "", PostFactoNfaReasonValue = "", BusinessPlanPricingValue = "",
                 CLPPLastPurchaseAmount = "", CLPPLastPurchaseCurrency = "", FormattedCLPPLastPurchaseAmount = "", PriceJustificationValue = "", CardinalRulesValue = "", DeviationListValue = "", TermsOfPaymentValue = "", PackagingForwardingValue = "", LogisticsAmount = "", LogisticsCurrency = "", FormattedLogisticsAmount = "", InsuranceValue = "",
-                PenaltyQualityValue = "", PenaltyCriteriaValue = "", DeliveryLeadTimeValue = "", LiquidatedDamagesValue = "", LiquidatedDamagesClValue = "", PBGAndSDValue = "", PBGAndSDClValue = "", PenaltyForSafetySubcontractValue = "", OtherKeyTermsValue = "", RationaleL1Value = "", PricesValue = "",
-                VendorName = "", VendorAddress = "", VendorInvitationId = "", VendorUserId = ""
+                PenaltyQualityValue = "", PenaltyCriteriaValue = "", DeliveryLeadTimeValue = "", LiquidatedDamagesValue = "", LiquidatedDamagesClValue = "", PBGAndSDValue = "", PBGAndSDClValue = "", PenaltyForSafetySubcontractValue = "", OtherKeyTermsValue = "", RationaleL1Value = "", PricesValue = "", ApprovingPlant = "",
+                VendorName = "", VendorAddress = "", VendorInvitationId = "", VendorUserId = "", FormattedDutyAmountINR = "", SourcingProjectBaseLineCurrency = "", SubjectOfProposalOrder = "", SourcingProjectCreateDate = "", SubjectofProposalOROrder = "", DocumentItemsUrlResult = "", savingsTerms = "", HistoricalAmount = "", CurrentAmount = "", Savings = "";
             /////-----------------VAR-----------------/////
 
             //Initialize as Numbers
@@ -139,6 +140,7 @@ if (isMainThread) {
                     DocumentUrlResult = await NfaAriba.post('/', DocumentUrlBody);
                     if (DocumentUrlResult.pendingAwardApprovalTaskId) {
                         TaskID = DocumentUrlResult.pendingAwardApprovalTaskId
+                        RfpPublishDate = DocumentUrlResult.createDate;
                     }
                     else
                         return 'No Data for this Project!'
@@ -169,7 +171,7 @@ if (isMainThread) {
                         FinalDate: DocumentUrlFinalDate,
                     };
 
-                    NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
+                    // NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
                     if (NfaDetailsData.length) {
                         console.log('RETURNING NFA NUMBER');
                         return NfaDetailsData[0].NfaNumber;
@@ -183,6 +185,7 @@ if (isMainThread) {
                         WorkerPromises.push(createWorker(SourcingProjectTeamsUrl.replace('<projectId>', ProjectID), SourcingProjectBase, 'SourcingProjectTeamsUrl'))
                         WorkerPromises.push(createWorker(DocumentScenariosUrl.replace('<docId>', DocId), DocumentBase, 'DocumentScenariosUrl'))
                         WorkerPromises.push(createWorker(DocumentSupplierInvitationsUrl.replace('<docId>', DocId), DocumentBase, 'DocumentSupplierInvitationsUrl'))
+                        WorkerPromises.push(createWorker(DocumentItemsUrl.replace('<docId>', DocId), DocumentBase, 'DocumentItemsUrl'))
                         console.log();
                         WokerThreadsResults = await Promise.all(WorkerPromises);
                         console.log("WokerThreadsResults", WokerThreadsResults);
@@ -195,14 +198,33 @@ if (isMainThread) {
                                     case 'SourcingProjectUrl':
                                         SourcingProjectDescription = result.description || ""
                                         SourcingProjectBaseLinespend = returnamt(result.baselineSpend.amount || "")
+                                        SourcingProjectBaseLineCurrency = result.baselineSpend.currency;
+                                        SubjectOfProposalOrder = result.title;
+                                        SourcingProjectCreateDate = result.createDate;
+
                                         break;
                                     case 'DocumentScenariosUrl':
                                         if (result.payload[0].eventId && !(result instanceof Error)) {
                                             DocumentScenariosSupCount = result.payload[0].selectedSuppliersCount || "";
                                             DocumentScenariosUrlResult = result;
                                             DocumentScenariosTotAwardPrice = returnamt(result.payload[0].totalAwardPrice.amount)
+                                            let extendedPriceTerms = result.payload[0].rollupTerms.filter(term => term.fieldId === "EXTENDEDPRICE");
+
+                                            extendedPriceTerms.forEach(term => {
+                                                HistoricalAmount = term.historyValue.moneyValue.amount;
+                                                CurrentAmount = term.value.moneyValue.amount;
+                                                Savings = HistoricalAmount - CurrentAmount; // will give the difference
+                                            });
+
+                                            SubjectofProposalOROrder = result.payload[0].title;
+
+
                                         }
                                         break;
+                                    case 'DocumentItemsUrl':
+                                        console.log(result.path);
+                                        DocumentItemsUrlResult = result;
+
                                 }
                             }
                         })
@@ -240,7 +262,7 @@ if (isMainThread) {
                                     VendorID = "";
                                     PVCode = "";
                                 }
-                                WorkerPromises.push(createWorker(DocumentSupplierBidsUrl.replace('<docId>', DocId).replace('<sName>', SupplierName), DocumentBase, 'DocumentSupplierBidsUrl'))
+                                // WorkerPromises.push(createWorker(DocumentSupplierBidsUrl.replace('<docId>', DocId).replace('<sName>', SupplierName), DocumentBase, 'DocumentSupplierBidsUrl'))
                                 WorkerPromises.push(createWorker(DocumentRoundsUrl.replace('<docId>', DocId), DocumentBase, 'DocumentRoundsUrl'))
                                 WorkerPromises.push(createWorker(SupplierQuestionariesUrl.replace('<vendorId>', VendorIds[k].SmVendorId), SupplierQuestionariesBase, 'SupplierQuestionariesUrl'))
                                 WokerThreadsResults1 = await Promise.all(WorkerPromises);
@@ -250,9 +272,10 @@ if (isMainThread) {
                                         if (!Array.isArray(WokerThreadsResults1[i].payload) && (!(WokerThreadsResults1[i] instanceof Error))) {
                                             SupplierData = WokerThreadsResults1[i];
                                         }
-                                        else if (Array.isArray(WokerThreadsResults1[i].payload) && WokerThreadsResults1[i].path == 'DocumentSupplierBidsUrl' && (!(WokerThreadsResults1[i] instanceof Error))) {
-                                            DocumentSupplierBidResult = WokerThreadsResults1[i];
-                                        } else if (Array.isArray(WokerThreadsResults1[i].payload) && WokerThreadsResults1[i].path == 'DocumentRoundsUrl' && (!(WokerThreadsResults1[i] instanceof Error))) {
+                                        // else if (Array.isArray(WokerThreadsResults1[i].payload) && WokerThreadsResults1[i].path == 'DocumentSupplierBidsUrl' && (!(WokerThreadsResults1[i] instanceof Error))) {
+                                        //     DocumentSupplierBidResult = WokerThreadsResults1[i];
+                                        // } 
+                                        else if (Array.isArray(WokerThreadsResults1[i].payload) && WokerThreadsResults1[i].path == 'DocumentRoundsUrl' && (!(WokerThreadsResults1[i] instanceof Error))) {
                                             RoundsData = WokerThreadsResults1[i];
                                         }
                                     }
@@ -334,8 +357,28 @@ if (isMainThread) {
                                         SupplierContact: SupplierContact
                                     })
                                 }
-                                if (DocumentSupplierBidResult && Array.isArray(DocumentSupplierBidResult.payload) && DocumentSupplierBidResult.payload.length > 0) {
-                                    for (const DocSuppBidItem of DocumentSupplierBidResult.payload) {
+
+                                PaymentDetails.push({
+                                    "slNo": 1,
+                                    "ProposedVendorCode": PVCode.at,
+                                    "NFANumber": DocId,
+
+
+                                })
+                                {
+
+                                }
+                            }
+                            Supplier.forEach(supp => {
+                                SupplierBidsWorker.push(createWorker(DocumentSupplierBidsUrl.replace('<docId>', DocId).replace('<sName>', supp.SupplierName), DocumentBase, `DocumentSupplierBidsUrl ${supp.SupplierName}`));
+                            })
+                            var DocumentSupplierBidResult = await Promise.all(SupplierBidsWorker);
+                            debugger
+                            DocumentSupplierBidResult.forEach(Questions => {
+                                console.log(Questions);
+                                SupplierBidName = Questions.path.split(" ")[1];
+                                if (Questions && Array.isArray(Questions.payload) && Questions.payload.length > 0) {
+                                    for (const DocSuppBidItem of Questions.payload) {
                                         const DocSuppBidItemTitle = DocSuppBidItem.item.title;
                                         console.log(DocSuppBidItem)
                                         SubmissionDate = DocSuppBidItem.submissionDate
@@ -357,11 +400,6 @@ if (isMainThread) {
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             AmendmentValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "AmendmentValue",
-                                                                Value: AmendmentValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Existing PO/ARC/Contract Value":
@@ -370,22 +408,12 @@ if (isMainThread) {
                                                             SupplierValueAmount = DocSuppBidItem.item.terms[0].value.supplierValue.amount
                                                             SupplierValueCurrency = DocSuppBidItem.item.terms[0].value.supplierValue.currency
                                                             FormattedSupplierValueAmount = `${parseFloat(SupplierValueAmount)} ${SupplierValueCurrency}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedSupplierValueAmount",
-                                                                Value: FormattedSupplierValueAmount
-                                                            })
                                                         }
                                                         break;
                                                     case "Existing PO number":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             ExistingPoNumberValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "ExistingPoNumberValue",
-                                                                Value: ExistingPoNumberValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Amendment Value Total NFA Amount ( Contract Value): Incase of Amendment, please enter the total value including amendment+ tolerance value if Any)":
@@ -394,56 +422,30 @@ if (isMainThread) {
                                                             TotalNFAAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
                                                             TotalNFAAmountCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
                                                             FormattedTotalNFAAmount = `${parseFloat(TotalNFAAmount)} ${TotalNFAAmountCurrency}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedTotalNFAAmount",
-                                                                Value: FormattedTotalNFAAmount
-                                                            })
                                                         }
                                                         break;
                                                     case "Contract Period":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            ContractPeriodValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            FormattedTotalNFAAmount = `${parseFloat(TotalNFAAmount)} ${TotalNFAAmountCurrency}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedTotalNFAAmount",
-                                                                Value: FormattedTotalNFAAmount
-                                                            })
+                                                            ContractPeriodValue = DocSuppBidItem.item.terms[0].value.simpleValue;
                                                         }
                                                         break;
                                                     case "Budget":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             BudgetValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "BudgetValue",
-                                                                Value: BudgetValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Order Type Parties contacted and technically accepted ( Rational If on single vendor basis)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             OrderTypePartiesValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "OrderTypePartiesValue",
-                                                                Value: OrderTypePartiesValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Rational for not doing auction,Is Price offer obtained before Auction (If Yes Kindly Attach the deviation approval obtained in NFA Supporting)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             RationalValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "RationalValue",
-                                                                Value: RationalValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Vendors Latest Available Turnover ( In INR Cr.)":
@@ -452,11 +454,6 @@ if (isMainThread) {
                                                             VendorsTurnOverAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
                                                             VendorsTurnOverCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
                                                             FormattedVendorsTurnOverAmount = `${parseFloat(VendorsTurnOverAmount)} ${VendorsTurnOverCurrency}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedVendorsTurnOverAmount",
-                                                                Value: FormattedVendorsTurnOverAmount
-                                                            })
                                                         }
                                                         break;
                                                     case "Total Vendor Spend for Current FY (In INR Cr.) (Total Open value as on NFA date + Proposed annual value":
@@ -465,88 +462,48 @@ if (isMainThread) {
                                                             VendorsSpendAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
                                                             VendorsSpendCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
                                                             FormattedVendorsSpendAmount = `${parseFloat(VendorsSpendAmount)} ${VendorsSpendCurrency}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedVendorsSpendAmount",
-                                                                Value: FormattedVendorsSpendAmount
-                                                            })
                                                         }
                                                         break;
                                                     case "Rational for awarding contract to dependent partner":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             RationalToDependentPartnerValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "RationalToDependentPartnerValue",
-                                                                Value: RationalToDependentPartnerValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Is any new initiative/best practices (Quality/ESG/Automation/Local supplier development etc) considered in this proposal:":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             NewInitiativeBestPracticesValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "NewInitiativeBestPracticesValue",
-                                                                Value: NewInitiativeBestPracticesValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Negotiation Committee(Name):":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             NegotiationCommitteValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "NegotiationCommitteValue",
-                                                                Value: NegotiationCommitteValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Internal SLAs/KPIs for the contract:":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             InternalSLAsKPIsValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "InternalSLAsKPIsValue",
-                                                                Value: InternalSLAsKPIsValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Contract Value (Basic Value)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             ContractBasicValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "ContractBasicValue",
-                                                                Value: ContractBasicValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Is there Any Import Supply under this Proposal?":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             ImportSupplyProposal = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "ImportSupplyProposal",
-                                                                Value: ImportSupplyProposal
-                                                            })
                                                         }
                                                         break;
                                                     case "FTA/EPCG/any other benefit availed for duty saving":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             FTAEPCGValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FTAEPCGValue",
-                                                                Value: FTAEPCGValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Approximate Duty Amount in INR":
@@ -555,44 +512,24 @@ if (isMainThread) {
                                                             DutyAmountINR = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
                                                             DutyCurrencyINR = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
                                                             FormattedDutyAmountINR = `${parseFloat(DutyAmountINR)} ${DutyCurrencyINR}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedDutyAmountINR",
-                                                                Value: FormattedDutyAmountINR
-                                                            })
                                                         }
                                                         break;
                                                     case "Monthly Quantity":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             MonthlyQuantityValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "MonthlyQuantityValue",
-                                                                Value: MonthlyQuantityValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Reason for Post Facto NFA ( If Applicable)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PostFactoNfaReasonValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PostFactoNfaReasonValue",
-                                                                Value: PostFactoNfaReasonValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Pricing in Business Plan (If Applicable)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             BusinessPlanPricingValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "BusinessPlanPricingValue",
-                                                                Value: BusinessPlanPricingValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Last Purchase Price/CLPP":
@@ -601,66 +538,36 @@ if (isMainThread) {
                                                             CLPPLastPurchaseAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
                                                             CLPPLastPurchaseCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
                                                             FormattedCLPPLastPurchaseAmount = `${parseFloat(CLPPLastPurchaseAmount)} ${CLPPLastPurchaseCurrency}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedCLPPLastPurchaseAmount",
-                                                                Value: FormattedCLPPLastPurchaseAmount
-                                                            })
                                                         }
                                                         break;
                                                     case "Price Justification":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PriceJustificationValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PriceJustificationValue",
-                                                                Value: PriceJustificationValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Deviations from Group philosophy/ Cardinal rules)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             CardinalRulesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "CardinalRulesValue",
-                                                                Value: CardinalRulesValue
-                                                            })
                                                         }
                                                         break;
                                                     case "List of Deviation":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             DeviationListValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "DeviationListValue",
-                                                                Value: DeviationListValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Terms Of Payment & milestone on which payment will be made":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             TermsOfPaymentValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "TermsOfPaymentValue",
-                                                                Value: TermsOfPaymentValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Packing & Forwarding":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PackagingForwardingValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PackagingForwardingValue",
-                                                                Value: PackagingForwardingValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Logistics":
@@ -669,164 +576,142 @@ if (isMainThread) {
                                                             LogisticsAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
                                                             LogisticsCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
                                                             FormattedLogisticsAmount = `${parseFloat(LogisticsAmount)} ${LogisticsCurrency}`
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "FormattedLogisticsAmount",
-                                                                Value: FormattedLogisticsAmount
-                                                            })
                                                         }
                                                         break;
                                                     case "Insurance":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             InsuranceValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "InsuranceValue",
-                                                                Value: InsuranceValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Penalty clause for Quality":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PenaltyQualityValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PenaltyQualityValue",
-                                                                Value: PenaltyQualityValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Penalty criteria":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PenaltyCriteriaValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PenaltyCriteriaValue",
-                                                                Value: PenaltyCriteriaValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Delivery Lead Time":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             DeliveryLeadTimeValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "DeliveryLeadTimeValue",
-                                                                Value: DeliveryLeadTimeValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Liquidated Damages":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             LiquidatedDamagesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "LiquidatedDamagesValue",
-                                                                Value: LiquidatedDamagesValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Liquidated Damages Clause":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             LiquidatedDamagesClValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "LiquidatedDamagesClValue",
-                                                                Value: LiquidatedDamagesClValue
-                                                            })
                                                         }
                                                         break;
                                                     case "PBG and SD":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PBGAndSDValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PBGAndSDValue",
-                                                                Value: PBGAndSDValue
-                                                            })
                                                         }
                                                         break;
                                                     case "PBG and SD Clause":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PBGAndSDClValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PBGAndSDClValue",
-                                                                Value: PBGAndSDClValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Penalty clause for safety- Subcontract(Allowed/ Not Allowed) (If Yes, which party and crendential of the party and technical approval of the party has to be enclosed in NFA)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PenaltyForSafetySubcontractValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PenaltyForSafetySubcontractValue",
-                                                                Value: PenaltyForSafetySubcontractValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Other Key Terms (Eg: Warranty, Inspection Clause, GTC Deviation, Party Delivery. Etc)":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             OtherKeyTermsValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "OtherKeyTermsValue",
-                                                                Value: OtherKeyTermsValue
-                                                            })
                                                         }
                                                         break;
                                                     case "Rationale if not L1":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             RationaleL1Value = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "RationaleL1Value",
-                                                                Value: RationaleL1Value
-                                                            })
                                                         }
                                                         break;
                                                     case "Prices Are":
                                                         if ("terms" in DocSuppBidItem.item &&
                                                             "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
                                                             PricesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                            DocSupplierBidItems.push({
-                                                                ItemID: DocSuppBidItem.item.itemId,
-                                                                label: "PricesValue",
-                                                                Value: PricesValue
-                                                            })
+                                                        }
+                                                        break;
+                                                    case "Approving Plant":
+                                                        if ("terms" in DocSuppBidItem.item &&
+                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                                                            ApprovingPlant = DocSuppBidItem.item.terms[0].value.simpleValue;
                                                         }
                                                         break;
                                                 }
-                                                console.log("DocSupplierBidItems", DocSupplierBidItems);
 
+                                                console.log("DocSupplierBidItems", DocSupplierBidItems);
 
                                             }
                                         }
                                     }
+                                    DocSupplierBidItems.push({
+                                        SupplierBidName: SupplierBidName,
+                                        DocSupBidInvitationID: DocSupBidInvitationID,
+                                        PayDate: PayDate,
+                                        AmendmentValue: AmendmentValue,
+                                        FormattedSupplierValueAmount: FormattedSupplierValueAmount,
+                                        ExistingPoNumberValue: ExistingPoNumberValue,
+                                        FormattedTotalNFAAmount: FormattedTotalNFAAmount,
+                                        ContractPeriodValue: ContractPeriodValue,
+                                        BudgetValue: BudgetValue,
+                                        OrderTypePartiesValue: OrderTypePartiesValue,
+                                        RationalValue: RationalValue,
+                                        FormattedVendorsTurnOverAmount: FormattedVendorsTurnOverAmount,
+                                        FormattedVendorsSpendAmount: FormattedVendorsSpendAmount,
+                                        RationalToDependentPartnerValue: RationalToDependentPartnerValue,
+                                        NewInitiativeBestPracticesValue: NewInitiativeBestPracticesValue,
+                                        NegotiationCommitteValue: NegotiationCommitteValue,
+                                        InternalSLAsKPIsValue: InternalSLAsKPIsValue,
+                                        ContractBasicValue: ContractBasicValue,
+                                        ImportSupplyProposal: ImportSupplyProposal,
+                                        FTAEPCGValue: FTAEPCGValue,
+                                        FormattedDutyAmountINR: FormattedDutyAmountINR,
+                                        MonthlyQuantityValue: MonthlyQuantityValue,
+                                        PostFactoNfaReasonValue: PostFactoNfaReasonValue,
+                                        BusinessPlanPricingValue: BusinessPlanPricingValue,
+                                        FormattedCLPPLastPurchaseAmount: FormattedCLPPLastPurchaseAmount,
+                                        PriceJustificationValue: PriceJustificationValue,
+                                        CardinalRulesValue: CardinalRulesValue,
+                                        DeviationListValue: DeviationListValue,
+                                        TermsOfPaymentValue: TermsOfPaymentValue,
+                                        PackagingForwardingValue: PackagingForwardingValue,
+                                        FormattedLogisticsAmount: FormattedLogisticsAmount,
+                                        InsuranceValue: InsuranceValue,
+                                        PenaltyQualityValue: PenaltyQualityValue,
+                                        PenaltyCriteriaValue: PenaltyCriteriaValue,
+                                        DeliveryLeadTimeValue: DeliveryLeadTimeValue,
+                                        LiquidatedDamagesValue: LiquidatedDamagesValue,
+                                        LiquidatedDamagesClValue: LiquidatedDamagesClValue,
+                                        PBGAndSDValue: PBGAndSDValue,
+                                        PBGAndSDClValue: PBGAndSDClValue,
+                                        PenaltyForSafetySubcontractValue: PenaltyForSafetySubcontractValue,
+                                        OtherKeyTermsValue: OtherKeyTermsValue,
+                                        RationaleL1Value: RationaleL1Value,
+                                        PricesValue: PricesValue,
+                                        ApprovingPlant: ApprovingPlant
+                                    })
                                 };
-                                PaymentDetails.push({
-                                    "slNo": 1,
-                                    "ProposedVendorCode": PVCode.at,
-                                    "NFANumber": DocId,
 
-
-                                })
-                                {
-
-                                }
-                            }
+                            })
                         }
                         //Prem Krishna
                         SupplierCount1 = VendorNames.filter(obj => {
@@ -848,24 +733,13 @@ if (isMainThread) {
 
                         InsertNfaDetailsBody = {
                             NfaNumber: DocId,
-                            PriceJustification: PriceJustificationValue,
-                            PenaltyClauseForQuality: PenaltyQualityValue,
-                            NFAID: DocId,
-                            AmendmentValueTotalNfaAmount: AmendmentValue,
-                            DeviationsfromGroupPhilosophyCardinalRules: CardinalRulesValue,
-                            PenaltyCriteria: PenaltyCriteriaValue,
-                            PricingInBusinessPlanIfApplicable: BusinessPlanPricingValue,
-                            ListOfDeviation: DeviationListValue,
-                            RationaleIfNotL1: RationaleL1Value,
-                            ExistingPoNumber: ExistingPoNumberValue,
-                            IsAnyNewInitiativeBestpractices: NewInitiativeBestPracticesValue,
-                            IsThereAnyImportSupplyUnderThisProposal: ImportSupplyProposal,
-                            Budget: BudgetValue,
-                            NegotiationCommittee: NegotiationCommitteValue,
-                            LastPurchasePriceClpp: FormattedCLPPLastPurchaseAmount,
-                            PricesAre: PricesValue,
-                            RationalForNotDoingAuction: RationalValue,
-                            TaskId: TaskID
+                            ProjectDescription: SourcingProjectDescription,
+                            BaseLineSpend: SourcingProjectBaseLinespend,
+                            ProjectCurrencyORBaseCurrency: SourcingProjectBaseLineCurrency,
+                            FinalProposedValue: SubjectOfProposalOrder,
+                            RfpPublishDate: RfpPublishDate,
+                            NumberOfVendorsShortlistedForRFP: DocumentScenariosSupCount,
+                            SavingsAchievedBtwInitialAndFinalQuote: Savings
 
                         }
                         console.log("InsertNfaDetailsBody", InsertNfaDetailsBody);
@@ -912,7 +786,7 @@ if (isMainThread) {
                                     Number: round.roundNumber.toString(),            // round number as string
                                     Date: round.biddingEndDate,                      // assign last date of round
                                     NumberOfVendorsParticipated: SupplierCountRounds.toString(), //Calculating the length of suppliers response
-                                    L1AmountObtained: "" 
+                                    L1AmountObtained: ""
                                 });
                             });
 
@@ -939,13 +813,26 @@ if (isMainThread) {
 
                         ////akshay and ajay
                         ////////////////************Vendor Details********************///////////////////////
-                        // for(i=0;i<WokerThreadsResults[3].payload.length;i++)
-                        // {
-                        //     VendorName = WokerThreadsResults[3].payload[i].organization.name;
-                        //     VendorAddress = WokerThreadsResults[3].payload[i].organization.address.city;
-                        //     VendorInvitationId = WokerThreadsResults[3].payload[i].invitationId;
-                        //     VendorUserId = WokerThreadsResults[3].payload[i].userId;
-                        // }
+                        for (var a = 0; a < WokerThreadsResults.length; a++) {
+                            if (WokerThreadsResults[a].path == 'DocumentSupplierInvitationsUrl')
+                                for (i = 0; i < WokerThreadsResults[a].payload.length; i++) {
+                                    VendorName = WokerThreadsResults[a].payload[i].organization.name;
+                                    VendorAddress = WokerThreadsResults[a].payload[i].organization.address.city;
+                                    VendorInvitationId = WokerThreadsResults[a].payload[i].invitationId;
+                                    VendorUserId = WokerThreadsResults[a].payload[i].userId;
+                                    VendorDetailsArr.push({
+                                        VendorName: VendorName,
+                                        VendorAddress: VendorAddress,
+                                        VendorInvitationId: VendorInvitationId,
+                                        VendorUserId: VendorUserId
+                                    })
+                                    VendorName = "";
+                                    VendorAddress = "";
+                                    VendorInvitationId = "";
+                                    VendorUserId = "";
+                                }
+                            break;
+                        }
 
 
                         /////////////********STORING MAX ROUND***************/////////////
@@ -954,26 +841,277 @@ if (isMainThread) {
                         const AllSuppliers = Array.from(
                             new Set(RoundsData.payload.flatMap(p => p.suppliers))
                         );
-                       
-                            // RoundsSuppliers = RoundsData.payload[a].suppliers;
-                            AllSuppliers.forEach(supplier => {
-                                 for (var a = 1; a <= RoundsData.payload.length; a++) {
+
+                        // RoundsSuppliers = RoundsData.payload[a].suppliers;
+                        AllSuppliers.forEach(supplier => {
+                            for (var a = 1; a <= RoundsData.payload.length; a++) {
                                 // loop through rounds in order
-                                        SupplierWithRounds.push({
-                                            Supplier: supplier,
-                                            Rounds: a
-                                        });
-                                         }
-                            });
-                       
+                                SupplierWithRounds.push({
+                                    Supplier: supplier,
+                                    Rounds: a
+                                });
+                            }
+                        });
+
 
 
                         /////////////////**********GET CALL FOR SUPPLIER BID FOR EACH ROUND*****************////////////
                         for (const item of SupplierWithRounds) {
                             console.log(item)
-                             WorkerPromises.push(createWorker(SuppierBidsInRounds.replace('<docId>', DocId).replace('<roundNo>',item.Rounds).replace('<invitationId>',item.Supplier), DocumentBase, 'DocumentSupplierInvitationsUrl'))
-                             SupplierDataWithRounds = await Promise.all(WorkerPromises)
+                            var url = SuppierBidsInRounds
+                                .replace('<docId>', encodeURIComponent(DocId))
+                                .replace('<roundNo>', encodeURIComponent(item.Rounds))
+                                .replace('<invitationId>', encodeURIComponent(item.Supplier));
+                            // WorkerPromises1.push(createWorker(SuppierBidsInRounds.replace('<docId>', DocId).replace('<roundNo>', item.Rounds).replace('<invitationId>', item.Supplier), DocumentBase, `SuppierBidsInRounds + ${item.Rounds} + ${item.Supplier}`));
+                            var result1 = await createWorker(
+                                url,
+                                DocumentBase,
+                                `SuppierBidsInRounds ${item.Rounds} ${item.Supplier}`
+                            );
+                            SupplierDataWithRounds.push(result1);
                         }
+                        var Item, UnitPrice, SupplierItemId, ItemPrice, ItemPrice1, ItemCurrency, UnitOfMeasure, DiscountPercentage, UnitOfMeasureCode, OrginalQuote, FinalQuote, VendorLocation, OrderAmountOrSplitOrderAmount, Disount, Rank, ItemsWithBid;
+                        for (let i = 0; i < SupplierDataWithRounds.length; i++) {
+
+                            const [Supplier, Round, Id] = SupplierDataWithRounds[i].path.split(" ");
+
+                            for (let j = 0; j < SupplierDataWithRounds[i].payload.length; j++) {
+                                if (j == 23)
+                                    console.log(SupplierDataWithRounds[i].payload[j])
+                                if ("itemsWithBid" in SupplierDataWithRounds[i].payload[j]) {
+
+                                    ItemsWithBid = SupplierDataWithRounds[i].payload[j].itemsWithBid;
+                                    console.log()
+                                }
+                            }
+
+                            for (let a = 0; a < ItemsWithBid.length; a++) {
+                                for (let j = 0; j < SupplierDataWithRounds[i].payload.length; j++) {
+                                    if (SupplierDataWithRounds[i].payload[j].item.itemId == ItemsWithBid[a]) {
+                                        console.log(SupplierDataWithRounds[i].payload[j].item.itemId);
+                                        Item = SupplierDataWithRounds[i].payload[j].item.title;
+                                        SupplierItemId = SupplierDataWithRounds[i].payload[j].itemId;
+                                        if ('bidRank' in SupplierDataWithRounds[i].payload[j]) {
+                                            BidRank = SupplierDataWithRounds[i].payload[j].bidRank
+                                        }
+                                        for (let k = 0; k < SupplierDataWithRounds[i].payload[j].item.terms.length; k++) {
+                                            if (SupplierDataWithRounds[i].payload[j].item.terms[k].title == "Extended Price") {
+                                                ItemPrice = SupplierDataWithRounds[i].payload[j].item.terms[k].value.moneyValue.amount
+                                                ItemCurrency = SupplierDataWithRounds[i].payload[j].item.terms[k].value.moneyValue.currency;
+                                                ItemPrice1 = `${parseFloat(ItemPrice)} ${ItemCurrency}`;
+
+                                            }
+                                            if (SupplierDataWithRounds[i].payload[j].item.terms[k].title == "Quantity") {
+                                                UnitOfMeasure = SupplierDataWithRounds[i].payload[j].item.terms[k].value.quantityValue.amount
+                                                UnitOfMeasureCode = SupplierDataWithRounds[i].payload[j].item.terms[k].value.quantityValue.unitOfMeasureCode;
+                                            }
+                                            if (SupplierDataWithRounds[i].payload[j].item.terms[k].title == "Discount Percentage") {
+                                                DiscountPercentage = SupplierDataWithRounds[i].payload[j].item.terms[k].value.bigDecimalValue;
+
+                                            }
+
+
+                                        }
+                                    }
+
+                                }
+                            }
+                            UnitPrice = ItemPrice / UnitOfMeasure;
+                            ItemsDetails.push({
+                                BidRank: BidRank,
+                                ItemName: Item,
+                                SupplierItemId: SupplierItemId,
+                                SupplierId: Id,
+                                Round: Round,
+                                ItemPrice: ItemPrice,
+                                UnitOfMeasure: UnitOfMeasure,
+                                UnitOfMeasureCode: UnitOfMeasureCode,
+                                UnitPrice: UnitPrice,
+                                DiscountPercentage: DiscountPercentage
+                            })
+                            BidRank = "";
+                            Item = "";
+                            SupplierItemId = "";
+                            ItemPrice = "";
+                            UnitOfMeasure = ""
+                            UnitOfMeasureCode = ""
+                            UnitPrice = "";
+                            DiscountPercentage = "";
+
+                        }
+
+                        // Step 1: Merge ItemsDetails with VendorDetailsArr
+                        const mergedArray = ItemsDetails.map(item => {
+                            const vendor = VendorDetailsArr.find(v => v.VendorInvitationId === item.SupplierId);
+                            return {
+                                ...item,
+                                ...(vendor || {})
+                            };
+                        });
+
+                        // Step 2: Group by SupplierId
+                        const grouped = mergedArray.reduce((acc, item) => {
+                            if (!acc[item.SupplierId]) acc[item.SupplierId] = [];
+                            acc[item.SupplierId].push(item);
+                            return acc;
+                        }, {});
+
+                        // Step 3: Build final result with MinRound + MaxRound + VendorIds + DocSupplierBidItems
+                        const finalResult = Object.entries(grouped).map(([supplierId, items]) => {
+                            // Sort rounds numerically
+                            const sorted = items.sort((a, b) => Number(a.Round) - Number(b.Round));
+
+                            // Vendor master data (from VendorIds)
+                            const vendor = VendorIds.find(v => v.VendorInvitationID === supplierId);
+
+                            // Doc bid items (all questions)
+                            const doc = DocSupplierBidItems.find(d => d.SupplierBidName === supplierId);
+
+                            return {
+                                SupplierId: supplierId,
+                                MinRound: sorted[0],                      // first round details
+                                MaxRound: sorted[sorted.length - 1],      // last round details
+
+                                // Vendor master info
+                                organizationName: vendor?.organizationName || null,
+                                VendorLocation: vendor?.VendorLocation || null,
+                                ErpVendorId: vendor?.ErpVendorId || null,
+                                SmVendorId: vendor?.SmVendorId || null,
+
+                                // All DocSupplierBidItems question/answer fields
+                                SupplierBidName: doc?.SupplierBidName || null,
+                                DocSupBidInvitationID: doc?.DocSupBidInvitationID || null,
+                                PayDate: doc?.PayDate || null,
+                                AmendmentValue: doc?.AmendmentValue || null,
+                                FormattedSupplierValueAmount: doc?.FormattedSupplierValueAmount || null,
+                                ExistingPoNumberValue: doc?.ExistingPoNumberValue || null,
+                                FormattedTotalNFAAmount: doc?.FormattedTotalNFAAmount || null,
+                                ContractPeriodValue: doc?.ContractPeriodValue || null,
+                                BudgetValue: doc?.BudgetValue || null,
+                                OrderTypePartiesValue: doc?.OrderTypePartiesValue || null,
+                                RationalValue: doc?.RationalValue || null,
+                                FormattedVendorsTurnOverAmount: doc?.FormattedVendorsTurnOverAmount || null,
+                                FormattedVendorsSpendAmount: doc?.FormattedVendorsSpendAmount || null,
+                                RationalToDependentPartnerValue: doc?.RationalToDependentPartnerValue || null,
+                                NewInitiativeBestPracticesValue: doc?.NewInitiativeBestPracticesValue || null,
+                                NegotiationCommitteValue: doc?.NegotiationCommitteValue || null,
+                                InternalSLAsKPIsValue: doc?.InternalSLAsKPIsValue || null,
+                                ContractBasicValue: doc?.ContractBasicValue || null,
+                                ImportSupplyProposal: doc?.ImportSupplyProposal || null,
+                                FTAEPCGValue: doc?.FTAEPCGValue || null,
+                                FormattedDutyAmountINR: doc?.FormattedDutyAmountINR || null,
+                                MonthlyQuantityValue: doc?.MonthlyQuantityValue || null,
+                                PostFactoNfaReasonValue: doc?.PostFactoNfaReasonValue || null,
+                                BusinessPlanPricingValue: doc?.BusinessPlanPricingValue || null,
+                                FormattedCLPPLastPurchaseAmount: doc?.FormattedCLPPLastPurchaseAmount || null,
+                                PriceJustificationValue: doc?.PriceJustificationValue || null,
+                                CardinalRulesValue: doc?.CardinalRulesValue || null,
+                                DeviationListValue: doc?.DeviationListValue || null,
+                                TermsOfPaymentValue: doc?.TermsOfPaymentValue || null,
+                                PackagingForwardingValue: doc?.PackagingForwardingValue || null,
+                                FormattedLogisticsAmount: doc?.FormattedLogisticsAmount || null,
+                                InsuranceValue: doc?.InsuranceValue || null,
+                                PenaltyQualityValue: doc?.PenaltyQualityValue || null,
+                                PenaltyCriteriaValue: doc?.PenaltyCriteriaValue || null,
+                                DeliveryLeadTimeValue: doc?.DeliveryLeadTimeValue || null,
+                                LiquidatedDamagesValue: doc?.LiquidatedDamagesValue || null,
+                                LiquidatedDamagesClValue: doc?.LiquidatedDamagesClValue || null,
+                                PBGAndSDValue: doc?.PBGAndSDValue || null,
+                                PBGAndSDClValue: doc?.PBGAndSDClValue || null,
+                                PenaltyForSafetySubcontractValue: doc?.PenaltyForSafetySubcontractValue || null,
+                                OtherKeyTermsValue: doc?.OtherKeyTermsValue || null,
+                                RationaleL1Value: doc?.RationaleL1Value || null,
+                                PricesValue: doc?.PricesValue || null,
+                                ApprovingPlant: doc?.ApprovingPlant || null
+                            };
+                        });
+
+                        console.log(finalResult);
+
+                        const maxRoundPerSupplierItem = Object.values(
+                            ItemsDetails.reduce((acc, obj) => {
+                                const key = `${obj.SupplierId}_${obj.SupplierItemId}`;
+                                if (!acc[key] || Number(obj.Round) > Number(acc[key].Round)) {
+                                    acc[key] = obj;
+                                }
+                                return acc;
+                            }, {})
+                        );
+
+                        console.log(maxRoundPerSupplierItem);
+                        for (let i = 0; i < DocumentItemsUrlResult.payload.length; i++) {
+                            var ItemQuantity, ItemPrice, ItemImproviseAmount;
+                            if (DocumentItemsUrlResult.payload[i].commodity) {
+                                for (let j = 0; j < DocumentItemsUrlResult.payload[i].terms.length; j++) {
+                                    if (DocumentItemsUrlResult.payload[i].terms[j].title === 'Quantity') {
+                                        ItemQuantity = DocumentItemsUrlResult.payload[i].terms[j].value.quantityValue.amount + ' ' + DocumentItemsUrlResult.payload[i].terms[j].value.quantityValue.unitOfMeasureCode;
+                                        // quantity_int = ItemResp.payload[i].terms[j].value.quantityValue.amount;
+                                    }
+                                    if (DocumentItemsUrlResult.payload[i].terms[j].title === 'Price') {
+                                        ItemPrice = DocumentItemsUrlResult.payload[i].terms[j].historyValue.moneyValue.amount + ' ' + DocumentItemsUrlResult.payload[i].terms[j].historyValue.moneyValue.currency;
+                                        // Price_int = ItemResp.payload[i].terms[j].historyValue.moneyValue.amount;
+                                    }
+                                    if (DocumentItemsUrlResult.payload[i].terms[j].title === 'Unit Cost') {
+                                        ItemImproviseAmount = DocumentItemsUrlResult.payload[i].terms[j].itemBiddingRules.revisedBidRule.absoluteImprovement;
+                                    }
+                                }
+                                if (ItemQuantity === 0 || ItemPrice === 0) {
+                                    continue;
+                                }
+                                ItemsPrice.push({
+                                    quantity: ItemQuantity,
+                                    Price: ItemPrice,
+                                    improvise_amount: ItemImproviseAmount,
+                                    ItemId: DocumentItemsUrlResult.payload[i].itemId
+                                })
+                                ItemQuantity = "";
+                                ItemPrice = "";
+                                ItemImproviseAmount = "";
+                            }
+
+
+
+
+                        }
+
+                        // Create a lookup map from ItemsPrice for faster access
+                        const priceMap = {};
+                        ItemsPrice.forEach(item => {
+                            priceMap[item.ItemId] = item.Price; // you can store more info if needed
+                        });
+
+                        // Merge Price into ItemsDetails
+                        ItemsDetails.forEach(detail => {
+                            const price = priceMap[detail.SupplierItemId]; // match by SupplierItemId
+                            if (price !== undefined) {
+                                detail.Price = price; // add new field
+                            } else {
+                                detail.Price = null; // optional: default if no match found
+                            }
+                        });
+
+                        console.log(ItemsDetails);
+
+                        debugger
+
+                        /////////////roundslogic//////////////
+                        const Rounds = RoundsData.payload; // your JSON response
+
+                        if (Rounds.length > 0) {
+                            const firstRound = Rounds[0];
+                            const lastRound = Rounds[Rounds.length - 1];
+
+                            const selectedRounds = [firstRound, lastRound].map(round => ({
+                                roundNumber: round.roundNumber,
+                                startDate: round.biddingStartDate
+                            }));
+
+                            console.log(selectedRounds);
+                        }
+
+                        
+
+
 
 
 
@@ -984,7 +1122,7 @@ if (isMainThread) {
                 }
             }
             catch (e) {
-
+                console.log(e)
             }
         })
 

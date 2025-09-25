@@ -14,27 +14,27 @@ entity NfaDetails {
         //listPage//
         //General Details//
         SBUUnitLocation                            : String;
-        AmendmentInExistingPoArcContract           : Boolean;
-        PricingInBusinessPlanIfApplicable          : String;
-        PriceJustification                         : String;
-        DeviationsfromGroupPhilosophyCardinalRules : String;
-        ListOfDeviation                            : String;
-        PenaltyClauseForQuality                    : String;
-        PenaltyCriteria                            : String;
-        RationaleIfNotL1                           : String;
+        AmendmentInExistingPoArcContract           : Boolean;//Move to Vendor
+        PricingInBusinessPlanIfApplicable          : String;//Move to Vendor
+        PriceJustification                         : String;//Move to Vendor
+        DeviationsfromGroupPhilosophyCardinalRules : String;//Move to Vendor
+        ListOfDeviation                            : String;//Move to Vendor
+        PenaltyClauseForQuality                    : String;//Move to Vendor
+        PenaltyCriteria                            : String;//Move to Vendor
+        RationaleIfNotL1                           : String;//Move to Vendor
         NFAID                                      : String;
         ApprovingPlant                             : String;
-        ExistingPoNumber                           : String;
+        ExistingPoNumber                           : String;//Move to Vendor
         //General Details//
         //Header Leavel Info//
-        AmendmentValueTotalNfaAmount               : String;
-        Budget                                     : String;
-        RationalForNotDoingAuction                 : Boolean;
-        IsAnyNewInitiativeBestpractices            : String;
-        NegotiationCommittee                       : String;
-        IsThereAnyImportSupplyUnderThisProposal    : Boolean;
-        LastPurchasePriceClpp                      : String;
-        SavingIncreaseAmountOnLpp                  : String;
+        AmendmentValueTotalNfaAmount               : String;//Move to Vendor
+        Budget                                     : String;//Move to Vendor
+        RationalForNotDoingAuction                 : Boolean;//Move to Vendor
+        IsAnyNewInitiativeBestpractices            : String;//Move to Vendor
+        NegotiationCommittee                       : String;//Move to Vendor
+        IsThereAnyImportSupplyUnderThisProposal    : Boolean;//Move to Vendor
+        LastPurchasePriceClpp                      : String;//Move to Vendor
+        SavingIncreaseAmountOnLpp                  : String;//Move to Vendor
         PricesAre                                  : String;
         //Header Leavel Info//
         //justification//
@@ -118,6 +118,8 @@ entity NfaEventHistory {
 }
 
 entity NfaVendorData {
+    //Exisint/po/arc/contractValue new field
+    // Penalty clause for safety- Subcontract(Allowed/ Not Allowed) (If Yes, which party and crendential of the party and technical approval of the party has to be enclosed in NFA) new field
     key ProposedVendorCode                              : String;
     key NfaNumber                                       : String;
         //vendor response details//
@@ -144,7 +146,7 @@ entity NfaVendorData {
         ApproximateDutyAmountInINR                      : String;
         MonthlyQuantity                                 : String;
         ReasonForPostFactoNFAIfApplicable               : String;
-        IncoTerm                                        : String;
+        IncoTerm                                        : String;//Move to Vendoritem 
         TermsOfPaymentMilestoneOnwhichPaymentWillBemade : String;
         PackingForwarding                               : String;
         Insurance                                       : String;
@@ -162,9 +164,9 @@ entity NfaVendorData {
         //Item level info//
         ProductServiceDescriptionBackground             : String;
         ApprovalRequestedForSubject                     : String;
-        ComparisonOfOffer                               : String;
-        TaxAmount                                       : String;
-        Freight                                         : String;
+        ComparisonOfOffer                               : String;//Move to NfaVendorItemsDetails
+        TaxAmount                                       : String;//Move to NfaVendorItemsDetails
+        Freight                                         : String;//Move to NfaVendorItemsDetails
         DeliveryLeadTime                                : String;
         //Item level info//
 
@@ -223,7 +225,7 @@ entity NfaVendorData {
 
 }
 
-entity NfaVendorItemsDetails {
+entity NfaVendorItemsDetails  {
 
     key NfaNumber                            : String;
     key ProposedVendorCode                   : String;
