@@ -5,7 +5,7 @@ const { Worker, workerData, parentPort, isMainThread } = require('node:worker_th
 if (isMainThread) {
     module.exports = cds.service.impl(async function () {
         let {
-            NfaDetails, NfaVendorData
+            NfaDetails, NfaVendorData, NfaVendorItemsDetails
         } = this.entities;
         var NfaAriba = await cds.connect.to("NfaAriba")
 
@@ -1275,6 +1275,8 @@ if (isMainThread) {
                                     ItemPrice: row.ItemPrice,
                                     ExtendedPrice: row.ExtendedPrice,
                                     UnitOfMeasure: row.UnitOfMeasure,
+                                    UnitOfMeasureCode: row.UnitOfMeasureCode,
+                                    ItemDescription: row.ItemDescription,
                                     UnitPrice: row.UnitPrice,
                                     BidRank: row.BidRank,
                                     DiscountPercentage: row.DiscountPercentage,
@@ -1341,7 +1343,7 @@ if (isMainThread) {
                                     VendorName: vendor.VendorName,
                                     VendorLocation: matchedSupplier ? matchedSupplier.SupplierFinalAddress : null,
                                     OrderAmountOrSplitOrderAmount: orderAmount, // sum of ExtendedPrice for rank 1 items
-                                    // DiscountPercentage: vendor.DiscountPercentage,
+                                    DiscountPercentage: vendor.DiscountPercentage,
                                     AmendmentInExistingPoArcContract: vendor.AmendmentValue,
                                     PricingInBusinessPlanIfApplicable: vendor.BusinessPlanPricingValue,
                                     PriceJustification: vendor.PriceJustificationValue,
@@ -1386,10 +1388,82 @@ if (isMainThread) {
                         });
 
 
+
+
                         // Now transformedResultPerRound contains parent-level vendors split by round
 
                         //Rounds 
                         console.log("transformedResultPerRound", transformedResultPerRound);
+                        debugger
+                        for (const parent of transformedResultPerRound) {
+                            const parentEntry = {
+                                ProposedVendorCode : parent.ProposedVendorCode,
+                                NfaNumber : parent.NfaNumber,
+                                round : parseInt(parent.round, 10),
+                                AwardedVendor : parent.AwardedVendor,
+                                VendorName : parent.VendorName,
+                                VendorLocation : parent.VendorLocation,
+                                OrderAmountOrSplitOrderAmount : parent.OrderAmountOrSplitOrderAmount,
+                                DiscountPercentage : parent.DiscountPercentage,
+                                AmendmentInExistingPoArcContract :parent.AmendmentInExistingPoArcContract,
+                                PricingInBusinessPlanIfApplicable : parent.PricingInBusinessPlanIfApplicable,
+                                PriceJustification : parent.PriceJustification,
+                                DeviationsfromGroupPhilosophyCardinalRules : parent.DeviationsfromGroupPhilosophyCardinalRules,
+                                ListOfDeviation : parent.ListOfDeviation,
+                                PenaltyClauseForQuality : parent.PenaltyClauseForQuality,
+                                PenaltyCriteria : parent.PenaltyCriteria,
+                                RationaleIfNotL1 : parent.RationaleIfNotL1,
+                                AmendmentValueTotalNfaAmount : parent.AmendmentValueTotalNfaAmount,
+                                Budget : parent.Budget,
+                                RationalForNotDoingAuction : parent.RationalForNotDoingAuction,
+                                IsAnyNewInitiativeBestpractices : parent.IsAnyNewInitiativeBestpractices,
+                                NegotiationCommittee : parent.NegotiationCommittee,
+                                IsThereAnyImportSupplyUnderThisProposal : parent.IsThereAnyImportSupplyUnderThisProposal,
+                                LastPurchasePriceClpp : parent.LastPurchasePriceClpp,
+                                ContractPeriod : parent.ContractPeriod,
+                                OrderTypePartiesContactedAndTechnicallyAccepted : parent.OrderTypePartiesContactedAndTechnicallyAccepted,
+                                IsVendorDependency : parent.IsVendorDependency,
+                                VendorsLatestAvailableTurnover : parent.VendorsLatestAvailableTurnover,
+                                TotalVendorSpendforCurrentFY : parent.TotalVendorSpendforCurrentFY,
+                                ShortlistedPartiesCredentialsBackground : parent.ShortlistedPartiesCredentialsBackground,
+                                InternalSLAsKPIsForTheContract : parent.InternalSLAsKPIsForTheContract,
+                                ContractValueBasicValue : parent.ContractValueBasicValue,
+                                FTAEPCGAnyOtherBenefitAvailedForDutySaving : parent.FTAEPCGAnyOtherBenefitAvailedForDutySaving,
+                                ApproximateDutyAmountInINR : parent.ApproximateDutyAmountInINR,
+                                MonthlyQuantity : parent.MonthlyQuantity,
+                                ReasonForPostFactoNFAIfApplicable : parent.ReasonForPostFactoNFAIfApplicable,
+                                IncoTerm : parent.IncoTerm,
+                                TermsOfPaymentMilestoneOnwhichPaymentWillBemade : parent.TermsOfPaymentMilestoneOnwhichPaymentWillBemade,
+                                PackingForwarding : parent.PackingForwarding,
+                                Insurance : parent.Insurance,
+                                LiquidatedDamages : parent.LiquidatedDamages,
+                                LiquidatedDamagesClause : parent.LiquidatedDamagesClause,
+                                PbgAndSd : parent.PbgAndSd,
+                                PbgAndSdClause : parent.PbgAndSdClause,
+                                OtherKeyTerms : parent.OtherKeyTerms,
+                                RationalForAwardingContractToDependentPartner : parent.RationalForAwardingContractToDependentPartner,
+                                ProductServiceDescriptionBackground : parent.ProductServiceDescriptionBackground,
+                                DeliveryLeadTime : parent.DeliveryLeadTime,
+                            }
+                              await INSERT.into(NfaVendorData).entries(parentEntry);
+                            if(parent.NfaVendorItemsDetails  && parent.NfaVendorItemsDetails.length > 0)
+                            {
+                                  const childEntries = parent.NfaVendorItemsDetails.map(item => ({
+                                    NfaNumber : DocId,
+                                    ProposedVendorCode : parent.ProposedVendorCode,
+                                    ItemCode : item.ItemId,
+                                    round  : parseInt(item.Round, 10),
+                                    Rank : item.BidRank,
+                                    Freight : item.Freight,
+                                    ItemShortDescription : item.ItemDescription,
+                                    Uom : item.UnitOfMeasureCode,
+                                    Quantity : item.UnitOfMeasure,
+                                    UnitPrice : item.UnitPrice,
+                                  }))
+                                  await INSERT.into(NfaVendorItemsDetails).entries(childEntries);
+                            }
+                        }
+                        debugger
 
 
                         // finalResult.forEach(vendor => {
