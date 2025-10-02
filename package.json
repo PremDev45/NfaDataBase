@@ -10,7 +10,9 @@
     "@sap-cloud-sdk/http-client": "^4.1.1",
     "@sap-cloud-sdk/resilience": "^4.1.1",
     "@sap/cds": "^9",
-    "express": "^4"
+    "@sap/hdi-deploy": "^5.5.1",
+    "express": "^4",
+    "hdb": "^0.19.12"
   },
   "engines": {
     "node": ">=20"
@@ -32,7 +34,7 @@
   },
   "cds": {
     "requires": {
-      "destinations":true,
+      "destinations": true,
       "TestApi": {
         "kind": "odata",
         "credentials": {
