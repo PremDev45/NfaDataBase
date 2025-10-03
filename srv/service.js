@@ -99,16 +99,16 @@ if (isMainThread) {
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
             /////*****************LET*****************/////
-            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData = 0, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds, RfpPublishDate;
+            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData = 0, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds, RfpPublishDate, BestSupplierID;
 
             //Initialize as Array
-            let InsertEntriesRounds = []
+            let InsertEntriesRounds = [], BestBidScenario = [], VendorsAwardedRecords = [], vendorSplitArray = []
             /////*****************LET*****************/////
 
 
 
             /////-----------------VAR-----------------/////
-            var ProjectID, TaskID, projCurrency, WebPublishDate, ProjectId, TemplateProjectTitle, BeginDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID, RoundsPayload, LastId, SupplierCountRounds, BidRank, SupplierBidName, ProjectCurrencyBaseCurrency, ApprovingPlantItem, SbuUnitLocation, AuctionDone, TaxPercentage, Freight;
+            var ProjectID, TaskID, projCurrency, WebPublishDate, ProjectId, TemplateProjectTitle, BeginDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID, RoundsPayload, LastId, SupplierCountRounds, BidRank, SupplierBidName, ProjectCurrencyBaseCurrency, ApprovingPlantItem, SbuUnitLocation, AuctionDone, TaxPercentage, Freight,SplitAmount,IsAwarded;
 
             //Initialize as Array
             var WorkerPromises = [], WorkerPromises1 = [], SupplierBidsWorker = [], DocumentScenariosUrlResult = [], VendorIds = [], Supplier = [], RoundsData = [], SupplierDetails = [],
@@ -203,6 +203,7 @@ if (isMainThread) {
                     };
 
                     NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
+                    // NfaDetailsData = "";
                     if (NfaDetailsData.length) {
                         console.log('RETURNING NFA NUMBER');
                         return NfaDetailsData[0].NfaNumber;
@@ -240,6 +241,32 @@ if (isMainThread) {
                                         if (result.payload[0].eventId && !(result instanceof Error)) {
                                             DocumentScenariosSupCount = result.payload[0].selectedSuppliersCount || "";
                                             DocumentScenariosUrlResult = result;
+                                            BestBidScenario = DocumentScenariosUrlResult.payload.find(
+                                                s => s.title === "Best Bid"
+                                            );
+                                            if (BestBidScenario) {
+                                                VendorsAwardedRecords = BestBidScenario.scenarioSummary.participantSummaryList;
+
+                                                VendorsAwardedRecords.forEach(VendorsAwardedRecord => {
+                                                    BestSupplierID = VendorsAwardedRecord.supplier.systemID
+                                                    // Find the "Total Cost" entry in rollupTermList
+                                                    const totalCostEntry = VendorsAwardedRecord.rollupTermList.find(
+                                                        term => term.title === "Total Cost"
+                                                    );
+
+                                                    let splitAmount = null;
+
+                                                    if (totalCostEntry && totalCostEntry.value && totalCostEntry.value.moneyValue) {
+                                                        splitAmount = totalCostEntry.value.moneyValue.amount;
+                                                    }
+
+                                                    // Push vendorId and splitAmount into array
+                                                    vendorSplitArray.push({
+                                                        vendorId: BestSupplierID,
+                                                        splitAmount: splitAmount
+                                                    });
+                                                })
+                                            }
                                             DocumentScenariosTotAwardPrice = returnamt(result.payload[0].totalAwardPrice.amount)
                                             DocumentScenariosTotAwardSavings = returnamt(result.payload[0].totalAwardSavings.difference.amount)
                                             let extendedPriceTerms = result.payload[0].rollupTerms.filter(term => term.fieldId === "EXTENDEDPRICE");
@@ -1172,27 +1199,29 @@ if (isMainThread) {
                             TimeTakenForFinalizationDASHInDAYS: diffDays,          // corrected key
                             AuctionDone: AuctionDone,
                             TaskId: TaskID,
-                            SBUUnitLocation: SbuUnitLocation
+                            SBUUnitLocation: SbuUnitLocation,
+                            maxRound: lastRound.roundNumber
                         });
 
                         console.log("GeneralDetailsArr", GeneralDetailsArr);
+                        const insertGeneral = await INSERT.into(NfaDetails).entries(GeneralDetailsArr);
                         //INSERTING GENERAL DETAILS
-                        for (const entry of GeneralDetailsArr) {
-                            console.log('typeOF', typeof (entry.NfaNumber));
-                            console.log('isIT', entry.NfaNumber);
-                            const existing = await SELECT.from(NfaDetails).where({ NfaNumber: entry.NfaNumber });
-                            console.log("existing", existing);
-                            if (existing.length > 0) {
-                                // record exists → update it
-                                await UPDATE(NfaDetails)
-                                    .set(entry)
-                                    .where({ NfaNumber: entry.NfaNumber });
-                            } else {
-                                // record does not exist → insert it
-                                const insertGeneral = await INSERT.into(NfaDetails).entries(entry);
-                                console.log('insertGeneral', insertGeneral);
-                            }
-                        }
+                        // for (const entry of GeneralDetailsArr) {
+                        //     console.log('typeOF', typeof (entry.NfaNumber));
+                        //     console.log('isIT', entry.NfaNumber);
+                        //     const existing = await SELECT.from(NfaDetails).where({ NfaNumber: entry.NfaNumber });
+                        //     console.log("existing", existing);
+                        //     if (existing.length > 0) {
+                        //         // record exists → update it
+                        //         await UPDATE(NfaDetails)
+                        //             .set(entry)
+                        //             .where({ NfaNumber: entry.NfaNumber });
+                        //     } else {
+                        //         // record does not exist → insert it
+                        //         const insertGeneral = await INSERT.into(NfaDetails).entries(entry);
+                        //         console.log('insertGeneral', insertGeneral);
+                        //     }
+                        // }
 
 
 
@@ -1333,17 +1362,28 @@ if (isMainThread) {
                                 const spendAmount = vendor.FormattedVendorsSpendAmount || 0;
                                 const turnoverAmount = vendor.FormattedVendorsTurnOverAmount || 1;
                                 const isVendorDependency = (spendAmount / turnoverAmount) * 100;
-
+                                // Find split entry for this vendor
+                                const splitEntry = vendorSplitArray.find(v => v.vendorId === vendor.SupplierId);
+                                if(splitEntry){
+                                    SplitAmount = splitEntry.splitAmount;
+                                }
+                                if(SplitAmount){
+                                        IsAwarded = "Yes"
+                                    }
+                                    else {
+                                        IsAwarded = "No"
+                                    }
                                 // Push parent-round object
                                 transformedResultPerRound.push({
                                     ProposedVendorCode: vendor.SupplierId,
                                     NfaNumber: DocId,
                                     round: parseInt(roundNumber, 10),
-                                    AwardedVendor: "",
+                                    AwardedVendor: IsAwarded,
                                     VendorName: vendor.VendorName,
                                     VendorLocation: matchedSupplier ? matchedSupplier.SupplierFinalAddress : null,
-                                    OrderAmountOrSplitOrderAmount: orderAmount, // sum of ExtendedPrice for rank 1 items
-                                    DiscountPercentage: vendor.DiscountPercentage,
+                                    // OrderAmountOrSplitOrderAmount: orderAmount, // sum of ExtendedPrice for rank 1 items
+                                    OrderAmountOrSplitOrderAmount: SplitAmount || '',
+                                    // DiscountPercentage: vendor.DiscountPercentage,
                                     AmendmentInExistingPoArcContract: vendor.AmendmentValue,
                                     PricingInBusinessPlanIfApplicable: vendor.BusinessPlanPricingValue,
                                     PriceJustification: vendor.PriceJustificationValue,
@@ -1397,70 +1437,71 @@ if (isMainThread) {
                         debugger
                         for (const parent of transformedResultPerRound) {
                             const parentEntry = {
-                                ProposedVendorCode : parent.ProposedVendorCode,
-                                NfaNumber : parent.NfaNumber,
-                                round : parseInt(parent.round, 10),
-                                AwardedVendor : parent.AwardedVendor,
-                                VendorName : parent.VendorName,
-                                VendorLocation : parent.VendorLocation,
-                                OrderAmountOrSplitOrderAmount : parent.OrderAmountOrSplitOrderAmount,
-                                DiscountPercentage : parent.DiscountPercentage,
-                                AmendmentInExistingPoArcContract :parent.AmendmentInExistingPoArcContract,
-                                PricingInBusinessPlanIfApplicable : parent.PricingInBusinessPlanIfApplicable,
-                                PriceJustification : parent.PriceJustification,
-                                DeviationsfromGroupPhilosophyCardinalRules : parent.DeviationsfromGroupPhilosophyCardinalRules,
-                                ListOfDeviation : parent.ListOfDeviation,
-                                PenaltyClauseForQuality : parent.PenaltyClauseForQuality,
-                                PenaltyCriteria : parent.PenaltyCriteria,
-                                RationaleIfNotL1 : parent.RationaleIfNotL1,
-                                AmendmentValueTotalNfaAmount : parent.AmendmentValueTotalNfaAmount,
-                                Budget : parent.Budget,
-                                RationalForNotDoingAuction : parent.RationalForNotDoingAuction,
-                                IsAnyNewInitiativeBestpractices : parent.IsAnyNewInitiativeBestpractices,
-                                NegotiationCommittee : parent.NegotiationCommittee,
-                                IsThereAnyImportSupplyUnderThisProposal : parent.IsThereAnyImportSupplyUnderThisProposal,
-                                LastPurchasePriceClpp : parent.LastPurchasePriceClpp,
-                                ContractPeriod : parent.ContractPeriod,
-                                OrderTypePartiesContactedAndTechnicallyAccepted : parent.OrderTypePartiesContactedAndTechnicallyAccepted,
-                                IsVendorDependency : parent.IsVendorDependency,
-                                VendorsLatestAvailableTurnover : parent.VendorsLatestAvailableTurnover,
-                                TotalVendorSpendforCurrentFY : parent.TotalVendorSpendforCurrentFY,
-                                ShortlistedPartiesCredentialsBackground : parent.ShortlistedPartiesCredentialsBackground,
-                                InternalSLAsKPIsForTheContract : parent.InternalSLAsKPIsForTheContract,
-                                ContractValueBasicValue : parent.ContractValueBasicValue,
-                                FTAEPCGAnyOtherBenefitAvailedForDutySaving : parent.FTAEPCGAnyOtherBenefitAvailedForDutySaving,
-                                ApproximateDutyAmountInINR : parent.ApproximateDutyAmountInINR,
-                                MonthlyQuantity : parent.MonthlyQuantity,
-                                ReasonForPostFactoNFAIfApplicable : parent.ReasonForPostFactoNFAIfApplicable,
-                                IncoTerm : parent.IncoTerm,
-                                TermsOfPaymentMilestoneOnwhichPaymentWillBemade : parent.TermsOfPaymentMilestoneOnwhichPaymentWillBemade,
-                                PackingForwarding : parent.PackingForwarding,
-                                Insurance : parent.Insurance,
-                                LiquidatedDamages : parent.LiquidatedDamages,
-                                LiquidatedDamagesClause : parent.LiquidatedDamagesClause,
-                                PbgAndSd : parent.PbgAndSd,
-                                PbgAndSdClause : parent.PbgAndSdClause,
-                                OtherKeyTerms : parent.OtherKeyTerms,
-                                RationalForAwardingContractToDependentPartner : parent.RationalForAwardingContractToDependentPartner,
-                                ProductServiceDescriptionBackground : parent.ProductServiceDescriptionBackground,
-                                DeliveryLeadTime : parent.DeliveryLeadTime,
+                                ProposedVendorCode: parent.ProposedVendorCode,
+                                NfaNumber: parent.NfaNumber,
+                                round: parseInt(parent.round, 10),
+                                AwardedVendor: parent.AwardedVendor,
+                                VendorName: parent.VendorName,
+                                VendorLocation: parent.VendorLocation,
+                                OrderAmountOrSplitOrderAmount: parent.OrderAmountOrSplitOrderAmount,
+                                AmendmentInExistingPoArcContract: parent.AmendmentInExistingPoArcContract,
+                                PricingInBusinessPlanIfApplicable: parent.PricingInBusinessPlanIfApplicable,
+                                PriceJustification: parent.PriceJustification,
+                                DeviationsfromGroupPhilosophyCardinalRules: parent.DeviationsfromGroupPhilosophyCardinalRules,
+                                ListOfDeviation: parent.ListOfDeviation,
+                                PenaltyClauseForQuality: parent.PenaltyClauseForQuality,
+                                PenaltyCriteria: parent.PenaltyCriteria,
+                                RationaleIfNotL1: parent.RationaleIfNotL1,
+                                AmendmentValueTotalNfaAmount: parent.AmendmentValueTotalNfaAmount,
+                                Budget: parent.Budget,
+                                RationalForNotDoingAuction: parent.RationalForNotDoingAuction,
+                                IsAnyNewInitiativeBestpractices: parent.IsAnyNewInitiativeBestpractices,
+                                NegotiationCommittee: parent.NegotiationCommittee,
+                                IsThereAnyImportSupplyUnderThisProposal: parent.IsThereAnyImportSupplyUnderThisProposal,
+                                LastPurchasePriceClpp: parent.LastPurchasePriceClpp,
+                                ContractPeriod: parent.ContractPeriod,
+                                OrderTypePartiesContactedAndTechnicallyAccepted: parent.OrderTypePartiesContactedAndTechnicallyAccepted,
+                                IsVendorDependency: parent.IsVendorDependency,
+                                VendorsLatestAvailableTurnover: parent.VendorsLatestAvailableTurnover,
+                                TotalVendorSpendforCurrentFY: parent.TotalVendorSpendforCurrentFY,
+                                ShortlistedPartiesCredentialsBackground: parent.ShortlistedPartiesCredentialsBackground,
+                                InternalSLAsKPIsForTheContract: parent.InternalSLAsKPIsForTheContract,
+                                ContractValueBasicValue: parent.ContractValueBasicValue,
+                                FTAEPCGAnyOtherBenefitAvailedForDutySaving: parent.FTAEPCGAnyOtherBenefitAvailedForDutySaving,
+                                ApproximateDutyAmountInINR: parent.ApproximateDutyAmountInINR,
+                                MonthlyQuantity: parent.MonthlyQuantity,
+                                ReasonForPostFactoNFAIfApplicable: parent.ReasonForPostFactoNFAIfApplicable,
+                                IncoTerm: parent.IncoTerm,
+                                TermsOfPaymentMilestoneOnwhichPaymentWillBemade: parent.TermsOfPaymentMilestoneOnwhichPaymentWillBemade,
+                                PackingForwarding: parent.PackingForwarding,
+                                Insurance: parent.Insurance,
+                                LiquidatedDamages: parent.LiquidatedDamages,
+                                LiquidatedDamagesClause: parent.LiquidatedDamagesClause,
+                                PbgAndSd: parent.PbgAndSd,
+                                PbgAndSdClause: parent.PbgAndSdClause,
+                                OtherKeyTerms: parent.OtherKeyTerms,
+                                RationalForAwardingContractToDependentPartner: parent.RationalForAwardingContractToDependentPartner,
+                                ProductServiceDescriptionBackground: parent.ProductServiceDescriptionBackground,
+                                DeliveryLeadTime: parent.DeliveryLeadTime,
                             }
-                              await INSERT.into(NfaVendorData).entries(parentEntry);
-                            if(parent.NfaVendorItemsDetails  && parent.NfaVendorItemsDetails.length > 0)
-                            {
-                                  const childEntries = parent.NfaVendorItemsDetails.map(item => ({
-                                    NfaNumber : DocId,
-                                    ProposedVendorCode : parent.ProposedVendorCode,
-                                    ItemCode : item.ItemId,
-                                    round  : parseInt(item.Round, 10),
-                                    Rank : item.BidRank,
-                                    Freight : item.Freight,
-                                    ItemShortDescription : item.ItemDescription,
-                                    Uom : item.UnitOfMeasureCode,
-                                    Quantity : item.UnitOfMeasure,
-                                    UnitPrice : item.UnitPrice,
-                                  }))
-                                  await INSERT.into(NfaVendorItemsDetails).entries(childEntries);
+                            await INSERT.into(NfaVendorData).entries(parentEntry);
+                            if (parent.NfaVendorItemsDetails && parent.NfaVendorItemsDetails.length > 0) {
+                                const childEntries = parent.NfaVendorItemsDetails.map(item => ({
+                                    NfaNumber: DocId,
+                                    ProposedVendorCode: parent.ProposedVendorCode,
+                                    ItemCode: item.ItemId,
+                                    Name: item.ItemName,
+                                    round: parseInt(item.Round, 10),
+                                    Rank: item.BidRank,
+                                    Freight: item.Freight,
+                                    ItemShortDescription: item.ItemDescription,
+                                    Uom: item.UnitOfMeasureCode,
+                                    Quantity: item.UnitOfMeasure,
+                                    UnitPrice: item.UnitPrice,
+                                    DiscountPercentage: item.DiscountPercentage,
+                                    IndianTaxPER : item.TaxPercentage
+                                }))
+                                await INSERT.into(NfaVendorItemsDetails).entries(childEntries);
                             }
                         }
                         debugger
@@ -1561,21 +1602,21 @@ if (isMainThread) {
 
 
                         ////////////////////////////////////VENDOR ITEM DETAILS/////////////////////////////////
-                        ItemsDetails.forEach(item => {
-                            NfaVendorItems.push({
-                                NfaNumber: DocId,
-                                ProposedVendorCode: item.SupplierId,
-                                ItemCode: item.ItemId,
-                                round: item.Round,
-                                Rank: item.BidRank,
-                                Freight: item.Freight,
-                                ItemShortDescription: item.ItemDescription,
-                                Uom: item.UnitOfMeasureCode,
-                                Quantity: item.UnitOfMeasure,
-                                UnitPrice: item.UnitPrice,
-                                IndianTaxPER: item.TaxPercentage,
-                            });
-                        });
+                        // ItemsDetails.forEach(item => {
+                        //     NfaVendorItems.push({
+                        //         NfaNumber: DocId,
+                        //         ProposedVendorCode: item.SupplierId,
+                        //         ItemCode: item.ItemId,
+                        //         round: item.Round,
+                        //         Rank: item.BidRank,
+                        //         Freight: item.Freight,
+                        //         ItemShortDescription: item.ItemDescription,
+                        //         Uom: item.UnitOfMeasureCode,
+                        //         Quantity: item.UnitOfMeasure,
+                        //         UnitPrice: item.UnitPrice,
+                        //         IndianTaxPER: item.TaxPercentage,
+                        //     });
+                        // });
 
                         debugger
 

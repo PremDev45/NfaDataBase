@@ -1,31 +1,32 @@
 namespace db;
+
 using {
     cuid,
     managed
 } from '@sap/cds/common';
 
 entity NfaDetails {
-    key NfaNumber                                  : String default 'def';
+    key NfaNumber                              : String default 'def';
         //listPage//
-        BUORPurchasingGroup                        : String @UI.Hidden;//
+        BUORPurchasingGroup                    : String @UI.Hidden; //
         // PlantCode                                  : String;
-        Status                                     : String;//
+        Status                                 : String; //
         //listPage//
         //General Details//
-        ProjectDescription                         : String;//
-        SubjectofProposalOROrder                   : String;//
-        BaseLineSpend                              : String;//
-        ProjectCurrencyORBaseCurrency              : String;//
-        FinalProposedValue                         : String;//
-        SavingsAchievedBtwInitialAndFinalQuote     : String;//
-        RfpNumber                                  : String;//WSid
-        RfpPublishDate                             : String;//
-        TimeTakenForFinalizationDASHInDAYS         : String;//
-        SBUUnitLocation                            : String;//
-        AuctionDone                              : Boolean;//
-       
+        ProjectDescription                     : String; //
+        SubjectofProposalOROrder               : String; //
+        BaseLineSpend                          : String; //
+        ProjectCurrencyORBaseCurrency          : String; //
+        FinalProposedValue                     : String; //
+        SavingsAchievedBtwInitialAndFinalQuote : String; //
+        RfpNumber                              : String; //WSid
+        RfpPublishDate                         : String; //
+        TimeTakenForFinalizationDASHInDAYS     : String; //
+        SBUUnitLocation                        : String; //
+        AuctionDone                            : Boolean; //
+
         // NFAID                                      : String;
-        ApprovingPlant                             : String;//
+        ApprovingPlant                         : String; //
         // ExistingPoNumber                           : String;
         //General Details//
         //Header Leavel Info//
@@ -33,20 +34,21 @@ entity NfaDetails {
         // PricesAre                                  : String;
         //Header Leavel Info//
         //justification//
-        Comments                                   : LargeString;//
+        Comments                               : LargeString; //
         //justification//
         //missalanious//
-        StatusInd                                  : Integer; //used for criticality rep
-        CreatedBy                                  : String;//
-        TaskId                                     : String;//
-        WorkFlowId                              : String;//
+        StatusInd                              : Integer; //used for criticality rep
+        CreatedBy                              : String; //
+        TaskId                                 : String; //
+        WorkFlowId                             : String; //
+        maxRound                               : Int16;
         //missalanious//
 
 
         // SBG                                        : String;
         // SBU                                        : String;
         // PrNumberBKTsBKT                            : String;
-       
+
         // PreviousPanReferences                      : String;
         // SplitOrderORNoOfvendors                    : String;
         // SopType                                    : String;
@@ -54,7 +56,7 @@ entity NfaDetails {
         // AssetType                                  : String;
         // NatureOfTransaction                        : String;
         // OrderLocationORPlant                       : String;
-       
+
         // OrderCurrencyORBidCurrency                 : String;
         // SavingsAgainstBaseLineSpendOfRFP           : String;
         // NumberOfVendorsShortlistedForRFP           : String;
@@ -71,16 +73,16 @@ entity NfaDetails {
         // SubmittedDate                              : String;
         // ExistingPOARCContractValue                 : String;
 
-        NfaDetailsToNfaEventHistory                : Composition of many NfaEventHistory
-                                                         on NfaDetailsToNfaEventHistory.NfaEventHistoryToNfaDetails = $self;
-        NfaDetailsToNfaVendorData                  : Composition of many NfaVendorData
-                                                         on NfaDetailsToNfaVendorData.NfaVendorDataToNfaDetails = $self;
-        NfaDetailsToNfaAttachments                 : Composition of many NfaAttachments
-                                                         on NfaDetailsToNfaAttachments.NfaAttachmentsToNfaDetails = $self;
-        NfaDetailsToNfaCommentsHistory             : Composition of many NfaCommentsHistory
-                                                         on NfaDetailsToNfaCommentsHistory.NfaCommentsHistoryToNfaDetails = $self;
-        NfaDetailsToNfaWorkflowHistory             : Composition of many NfaWorkflowHistory
-                                                         on NfaDetailsToNfaWorkflowHistory.NfaWorkflowHistoryToNfaDetails = $self;
+        NfaDetailsToNfaEventHistory            : Composition of many NfaEventHistory
+                                                     on NfaDetailsToNfaEventHistory.NfaEventHistoryToNfaDetails = $self;
+        NfaDetailsToNfaVendorData              : Composition of many NfaVendorData
+                                                     on NfaDetailsToNfaVendorData.NfaVendorDataToNfaDetails = $self;
+        NfaDetailsToNfaAttachments             : Composition of many NfaAttachments
+                                                     on NfaDetailsToNfaAttachments.NfaAttachmentsToNfaDetails = $self;
+        NfaDetailsToNfaCommentsHistory         : Composition of many NfaCommentsHistory
+                                                     on NfaDetailsToNfaCommentsHistory.NfaCommentsHistoryToNfaDetails = $self;
+        NfaDetailsToNfaWorkflowHistory         : Composition of many NfaWorkflowHistory
+                                                     on NfaDetailsToNfaWorkflowHistory.NfaWorkflowHistoryToNfaDetails = $self;
 
 
 }
@@ -88,7 +90,7 @@ entity NfaDetails {
 entity NfaEventHistory {
     key idd                         : String;
     key NfaNumber                   : String;
-    key round : Int16;
+    key round                       : Int16;
         //pan web event//
         EventNo                     : String;
         Number                      : String;
@@ -109,67 +111,67 @@ entity NfaEventHistory {
 entity NfaVendorData {
     key ProposedVendorCode                              : String;
     key NfaNumber                                       : String;
-    key round                                              :Int16;
+    key round                                           : Int16;
         //vendor response details//
         AwardedVendor                                   : String;
-        VendorName                                      : String;//
+        VendorName                                      : String; //
         OriginalQuote                                   : String;
         FinalQuote                                      : String;
-        VendorLocation                                  : String;//
-        OrderAmountOrSplitOrderAmount                   : String;//
-        DiscountPercentage                              : String;//
-       
+        VendorLocation                                  : String; //
+        OrderAmountOrSplitOrderAmount                   : String; //
+
+
         //vendor response details//
         //vendor response//
-        AmendmentInExistingPoArcContract           : Boolean;//
-        PricingInBusinessPlanIfApplicable          : String;//
-        PriceJustification                         : String;//
-        DeviationsfromGroupPhilosophyCardinalRules : Boolean;//
-        ListOfDeviation                            : String;//
-        PenaltyClauseForQuality                    : String;//
-        PenaltyCriteria                            : String;//
-        RationaleIfNotL1                           : String;//
-        AmendmentValueTotalNfaAmount               : String;//
-        Budget                                     : String;//
-        RationalForNotDoingAuction                 : Boolean;//
-        IsAnyNewInitiativeBestpractices            : String;//
-        NegotiationCommittee                       : String;//
-        IsThereAnyImportSupplyUnderThisProposal    : Boolean;//
-        LastPurchasePriceClpp                      : String;//
-        ContractPeriod                                  : Int16;//
-        OrderTypePartiesContactedAndTechnicallyAccepted : String;//
+        AmendmentInExistingPoArcContract                : Boolean; //
+        PricingInBusinessPlanIfApplicable               : String; //
+        PriceJustification                              : String; //
+        DeviationsfromGroupPhilosophyCardinalRules      : Boolean; //
+        ListOfDeviation                                 : String; //
+        PenaltyClauseForQuality                         : String; //
+        PenaltyCriteria                                 : String; //
+        RationaleIfNotL1                                : String; //
+        AmendmentValueTotalNfaAmount                    : String; //
+        Budget                                          : String; //
+        RationalForNotDoingAuction                      : Boolean; //
+        IsAnyNewInitiativeBestpractices                 : String; //
+        NegotiationCommittee                            : String; //
+        IsThereAnyImportSupplyUnderThisProposal         : Boolean; //
+        LastPurchasePriceClpp                           : String; //
+        ContractPeriod                                  : Int16; ///
+        OrderTypePartiesContactedAndTechnicallyAccepted : String; ///
         // ContractManagerName                             : String;
-        IsVendorDependency                              : Boolean;//
-        VendorsLatestAvailableTurnover                  : String;//
-        TotalVendorSpendforCurrentFY                    : String;//
+        IsVendorDependency                              : Boolean; ///
+        VendorsLatestAvailableTurnover                  : String; ///
+        TotalVendorSpendforCurrentFY                    : String; ///
         ShortlistedPartiesCredentialsBackground         : String;
-        InternalSLAsKPIsForTheContract                  : String;//
-        ContractValueBasicValue                         : String;//
-        FTAEPCGAnyOtherBenefitAvailedForDutySaving      : Boolean;//
-        ApproximateDutyAmountInINR                      : String;//
-        MonthlyQuantity                                 : String;//
-        ReasonForPostFactoNFAIfApplicable               : String;//
+        InternalSLAsKPIsForTheContract                  : String; ///
+        ContractValueBasicValue                         : String; ///
+        FTAEPCGAnyOtherBenefitAvailedForDutySaving      : Boolean; ///
+        ApproximateDutyAmountInINR                      : String; ///
+        MonthlyQuantity                                 : String; ///
+        ReasonForPostFactoNFAIfApplicable               : String; ///
         IncoTerm                                        : String;
-        TermsOfPaymentMilestoneOnwhichPaymentWillBemade : String;//
-        PackingForwarding                               : String;//
-        Insurance                                       : String;//
-        LiquidatedDamages                               : String;//
-        LiquidatedDamagesClause                         : String;//
-        PbgAndSd                                        : String;//
-        PbgAndSdClause                                  : String;//
-        JobClearanceCertificates                        : String;//
-        HrClearanceCertificates                         : String;//
-        OtherKeyTerms                                   : String;//
+        TermsOfPaymentMilestoneOnwhichPaymentWillBemade : String; ///
+        PackingForwarding                               : String; ///
+        Insurance                                       : String; ///
+        LiquidatedDamages                               : String; ///
+        LiquidatedDamagesClause                         : String; ///
+        PbgAndSd                                        : String; ///
+        PbgAndSdClause                                  : String; ///
+        JobClearanceCertificates                        : String; ///
+        HrClearanceCertificates                         : String; ///
+        OtherKeyTerms                                   : String; ///
         //vendor response//
         //terms and conditions//
-        RationalForAwardingContractToDependentPartner   : String;//
+        RationalForAwardingContractToDependentPartner   : String; ///
         //terms and conditions//
         //Item level info//
-        ProductServiceDescriptionBackground             : String;//
+        ProductServiceDescriptionBackground             : String; ///
         ApprovalRequestedForSubject                     : String;
         ComparisonOfOffer                               : String;
         TaxAmount                                       : String;
-        DeliveryLeadTime                                : String;//
+        DeliveryLeadTime                                : String; ///
         //Item level info//
 
 
@@ -232,22 +234,24 @@ entity NfaVendorItemsDetails {
     key NfaNumber                            : String;
     key ProposedVendorCode                   : String;
     key ItemCode                             : String;
-    key round :Int16;
+    key round                                : Int16;
         //item Details//
-        Rank                                            : String;//
-        Freight                                         : String;//
+        Name                                 : String;
+        Rank                                 : String; //
+        Freight                              : String; //
         HsnOrSacCode                         : String;
-        ItemShortDescription                 : String;//
-        Uom                                  : String;//
-        Quantity                             : String;//
-        UnitPrice                            : String;//
-        IndianTaxPER                        : String;//
+        DiscountPercentage                   : String; //
+        ItemShortDescription                 : String; //
+        Uom                                  : String; //
+        Quantity                             : String; //
+        UnitPrice                            : String; //
+        IndianTaxPER                         : String; //
         //item Details//
 
 
         // ExtendedPrice                       : String;
         // Amount                              : String;
-       
+
         // QuantityOverDeliveryTolerance       : String;
 
         NfaVendorItemsDetailsToNfaVendorData : Association to one NfaVendorData
@@ -282,11 +286,11 @@ entity NfaCommentsHistory : managed {
                                              on NfaCommentsHistoryToNfaDetails.NfaNumber = NfaNumber;
 }
 
-entity NfaWorkflowHistory :managed{
+entity NfaWorkflowHistory : managed {
     key NfaNumber                      : String;
         //workflow History//
     key level                          : Int16;
-    key  EmployeeID                     : String;
+    key EmployeeID                     : String;
         EmployeeName                   : String;
         Status                         : String;
         ApprovedBy                     : String;
@@ -303,34 +307,46 @@ entity NfaWorkflowHistory :managed{
         NfaWorkflowHistoryToNfaDetails : Association to one NfaDetails
                                              on NfaWorkflowHistoryToNfaDetails.NfaNumber = NfaNumber;
 }
-entity Rules{
-    key ruleName:String;
-    activeStatus:Boolean;
-    RulesToRulesCondition:Composition of many RulesCondition on RulesToRulesCondition.RulesConditionToRules = $self;
-    RulesToRulesLevels:Composition of many RulesLevels on RulesToRulesLevels.RulesLevelsToRules = $self;
+
+entity Rules {
+    key ruleName              : String;
+        activeStatus          : Boolean;
+        RulesToRulesCondition : Composition of many RulesCondition
+                                    on RulesToRulesCondition.RulesConditionToRules = $self;
+        RulesToRulesLevels    : Composition of many RulesLevels
+                                    on RulesToRulesLevels.RulesLevelsToRules = $self;
 }
-entity RulesCondition{
-    key field:String;
-    key ruleName:String;
-    comparator:String;
-    value1:String;
-    value2:String;
-    RulesConditionToRules:Association to one Rules on RulesConditionToRules.ruleName=ruleName;
+
+entity RulesCondition {
+    key field                 : String;
+    key ruleName              : String;
+        comparator            : String;
+        value1                : String;
+        value2                : String;
+        RulesConditionToRules : Association to one Rules
+                                    on RulesConditionToRules.ruleName = ruleName;
 }
+
 entity RulesLevels {
-    key ruleName:String;
-    key level:Int16;
-    RulesLevelsToRules:Association to one Rules on RulesLevelsToRules.ruleName=ruleName;
-    RulesLevelsToRulesApprovers:Composition of many RulesApprovers on RulesLevelsToRulesApprovers.RulesApproversToRulesLevels = $self;
+    key ruleName                    : String;
+    key level                       : Int16;
+        RulesLevelsToRules          : Association to one Rules
+                                          on RulesLevelsToRules.ruleName = ruleName;
+        RulesLevelsToRulesApprovers : Composition of many RulesApprovers
+                                          on RulesLevelsToRulesApprovers.RulesApproversToRulesLevels = $self;
 }
-entity  RulesApprovers{
-    key ruleName:String;
-    key level:Int16;
-    key EmployeeID                     : String;
-    EmployeeName                   : String;
-    RulesApproversToRulesLevels:Association to one RulesLevels on RulesApproversToRulesLevels.ruleName=ruleName and RulesApproversToRulesLevels.level=level;
+
+entity RulesApprovers {
+    key ruleName                    : String;
+    key level                       : Int16;
+    key EmployeeID                  : String;
+        EmployeeName                : String;
+        RulesApproversToRulesLevels : Association to one RulesLevels
+                                          on  RulesApproversToRulesLevels.ruleName = ruleName
+                                          and RulesApproversToRulesLevels.level    = level;
 }
-entity  Approvers{
-    key EmployeeID                     : String;
-    EmployeeName                   : String;
+
+entity Approvers {
+    key EmployeeID   : String;
+        EmployeeName : String;
 }

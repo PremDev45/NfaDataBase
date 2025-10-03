@@ -42,7 +42,7 @@ sap.ui.define([
                 var href_For_Product_display = ( sap.ushell && sap.ushell.Container && await sap.ushell.Container.getServiceAsync("Navigation")) || "";
 							if(href_For_Product_display != ""){
 								await href_For_Product_display.navigate({
-									target : {    semanticObject: "nfaformflp",
+									target : {    semanticObject: "nfaformsem",
                                         action: "display" },
 									params : { "NfaNumber" : oContext.value,
                                         "IsActiveEntity": true }
