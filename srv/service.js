@@ -1,11 +1,12 @@
 const cds = require('@sap/cds');
+const { log } = require('node:console');
 const { url } = require('node:inspector');
 const { Worker, workerData, parentPort, isMainThread } = require('node:worker_threads');
 // projectId = #WS79052482 ///// new one = #WS84836442 ////// #WS85279377
 if (isMainThread) {
     module.exports = cds.service.impl(async function () {
         let {
-            NfaDetails, NfaVendorData, NfaVendorItemsDetails
+            NfaDetails, NfaVendorData, NfaVendorItemsDetails, NfaWorkflowHistory
         } = this.entities;
         var NfaAriba = await cds.connect.to("NfaAriba")
 
@@ -26,9 +27,20 @@ if (isMainThread) {
             query: "realm=PEOLSOLUTIONSDSAPP-T&user=puser1&passwordAdapter=PasswordAdapter1&apikey=3TTrakeyAxb5iVfcZ9kdN4B9jMyyGxOJ"
         };
 
+        //Due Dilegence api's Base
+        const DueDiligenceUrlBase = {
+            securityMaterial: "DueDilgence",
+            query: "apikey=3TTrakeyAxb5iVfcZ9kdN4B9jMyyGxOJ&realm=PEOLSOLUTIONSDSAPP-T"
+        };
+        const DueDiligenceUrlFirstBase = {
+            securityMaterial: "DueDilgence",
+            query: "realm=PEOLSOLUTIONSDSAPP-T&apikey=3TTrakeyAxb5iVfcZ9kdN4B9jMyyGxOJ"
+        };
+
 
 
         //sourcing project api's
+
         var SourcingProjecturl = "https://openapi.au.cloud.ariba.com/api/sourcing-project-management/v2/prod/projects/<projectId>"
 
         //Docs
@@ -45,12 +57,21 @@ if (isMainThread) {
         var DocumentSupplierInvitationsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/supplierInvitations"
         //items with pages
         var DocumentItemsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/items/pages/<pageNo>";
+        //questioneries upda//items with pages
+        var QuestionsUpdated = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/items";
         //supplierBids
         var DocumentSupplierBidsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/supplierBids/<sName>"
         //rounds
         var DocumentRoundsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/rounds";
         //supplier data pagination api's
+
         var SupplierQuestionariesUrl = "https://openapi.au.cloud.ariba.com/api/supplierdatapagination/v4/prod//vendors/<vendorId>/workspaces/questionnaires/qna";
+
+        //  Due Dilegence
+        var DueDiligenceUrl = "https://openapi.au.cloud.ariba.com/api/supplierdatapagination/v4/prod/vendors/<vendorId>/workspaces/<WorkspaceId>/questionnaires/<QuestinonId>/qna";
+
+        //  Due Dilegence first
+        var DueDiligenceFirstUrl = "https://openapi.au.cloud.ariba.com/api/supplierdatapagination/v4/prod/vendors/<vendorId>/workspaces/questionnaires";
 
         /////////////*****NEW API TO CHECK VENDOR QUOTED AMOUNT IN EACH ROUND*********////////////////
         var SuppierBidsInRounds = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/rounds/<roundNo>/supplierBids/<invitationId>"
@@ -95,11 +116,11 @@ if (isMainThread) {
                 .sort((a, b) => a.roundNumber - b.roundNumber);
         }
         this.on('getDataForUserAndProject', async (req) => {
-            debugger
+            //debugger
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
             /////*****************LET*****************/////
-            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData = 0, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds, RfpPublishDate, BestSupplierID;
+            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData = 0, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds, RfpPublishDate, BestSupplierID, participant;
 
             //Initialize as Array
             let InsertEntriesRounds = [], BestBidScenario = [], VendorsAwardedRecords = [], vendorSplitArray = []
@@ -108,15 +129,26 @@ if (isMainThread) {
 
 
             /////-----------------VAR-----------------/////
-            var ProjectID, TaskID, projCurrency, WebPublishDate, ProjectId, TemplateProjectTitle, BeginDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID, RoundsPayload, LastId, SupplierCountRounds, BidRank, SupplierBidName, ProjectCurrencyBaseCurrency, ApprovingPlantItem, SbuUnitLocation, AuctionDone, TaxPercentage, Freight,SplitAmount,IsAwarded;
+            var ProjectID, TaskID, projCurrency, WebPublishDate, ProjectId, TemplateProjectTitle, BeginDate, DocumentUrlFinalDate, DocumentUrlCreateDate, VendorID, RoundsPayload, LastId, SupplierCountRounds, BidRank, SupplierBidName, ProjectCurrencyBaseCurrency, ApprovingPlantItem, SbuUnitLocation, AuctionDone, TaxPercentage, Freight, SplitAmount, IsAwarded;
 
             //Initialize as Array
             var WorkerPromises = [], WorkerPromises1 = [], SupplierBidsWorker = [], DocumentScenariosUrlResult = [], VendorIds = [], Supplier = [], RoundsData = [], SupplierDetails = [],
                 VendorNames = [], DocSupplierBidItems = [], PaymentDetails = [], SupplierCount1 = [], SupplierCountValue = [], SupplierWithRounds = [], SupplierDataWithRounds = [],
-                ItemsDetails = [], VendorDetailsArr = [], ItemsPrice = [], EventHistory = [], GeneralDetailsArr = [], NfaVendorDataArr = [], NfaVendorItems = [];
+                ItemsDetails = [], VendorDetailsArr = [], ItemsPrice = [], EventHistory = [], GeneralDetailsArr = [], NfaVendorDataArr = [], NfaVendorItems = [], WorkflowHistory = [];
 
             //Initialize as Objects
             var SupplierInvitationsUrlResult = {}, SupplierCount = {}, SupplierRounds = {};
+
+            //quetions
+            let questionnaireArray = []; // your main array
+
+            // Initialize variables (optional, ensures they exist)
+            let CompanyName, CompanyAddress, CompanyCity, CompanyState, CompanyPincode, CompanyCountry,
+                ClassOfCompany, CompanyActivity, NICCode, NICCodeDescription, CompanyStatus, DateOfIncorporation,
+                AgeOfCompany, ListingStatus, DateOfLastBalanceSheet, DateOfLastAGM, AuthorizedCapital, PaidUpCapital,
+                ManagementDetails, CompanyNumber, CompanyEmail, CompanyWebsite, Comments, otherField;
+
+
 
             //Initialize as Empty 
             var SourcingProjectDescription = "", SourcingProjectBaseLinespend = "", DocumentScenariosTotAwardPrice = "", DocumentScenariosTotAwardSavings = "", SupplierName = "", VendorID = "", PVCode = "", SmID = "", SupplierData = "", GstNo = "", CEScore = "", SupplierAdress = "", SupplierStreetName = "", SupplierRegion = "", SupplierPostalCode = "", SupplierCity = "", SupplierHouseID = "", SupplierCountry = "",
@@ -126,7 +158,8 @@ if (isMainThread) {
                 ContractBasicValue = "", ImportSupplyProposal = "", FTAEPCGValue = "", MonthlyQuantityValue = "", PostFactoNfaReasonValue = "", BusinessPlanPricingValue = "",
                 CLPPLastPurchaseAmount = "", CLPPLastPurchaseCurrency = "", FormattedCLPPLastPurchaseAmount = "", PriceJustificationValue = "", CardinalRulesValue = "", DeviationListValue = "", TermsOfPaymentValue = "", PackagingForwardingValue = "", LogisticsAmount = "", LogisticsCurrency = "", FormattedLogisticsAmount = "", InsuranceValue = "",
                 PenaltyQualityValue = "", PenaltyCriteriaValue = "", DeliveryLeadTimeValue = "", LiquidatedDamagesValue = "", LiquidatedDamagesClValue = "", PBGAndSDValue = "", PBGAndSDClValue = "", PenaltyForSafetySubcontractValue = "", OtherKeyTermsValue = "", RationaleL1Value = "", PricesValue = "", ApprovingPlant = "",
-                VendorName = "", VendorAddress = "", VendorInvitationId = "", VendorUserId = "", FormattedDutyAmountINR = "", SourcingProjectBaseLineCurrency = "", SubjectOfProposalOrder = "", SourcingProjectCreateDate = "", SubjectofProposalOROrder = "", DocumentItemsUrlResult = "", savingsTerms = "", HistoricalAmount = "", CurrentAmount = "", Savings = "";
+                VendorName = "", VendorAddress = "", VendorInvitationId = "", VendorUserId = "", VendorsmVendorID = "", FormattedDutyAmountINR = "", SourcingProjectBaseLineCurrency = "", SubjectOfProposalOrder = "", SourcingProjectCreateDate = "", SubjectofProposalOROrder = "", DocumentItemsUrlResult = "", savingsTerms = "", HistoricalAmount = "", CurrentAmount = "", Savings = "",
+                ExistingPoNumber = "", ExistingPoContractValue = "", ExistingPoContractCurrency = "", ProductServiceDescriptionBackground = "";
             /////-----------------VAR-----------------/////
 
             //Initialize as Numbers
@@ -168,7 +201,7 @@ if (isMainThread) {
                         url: DocumentUrl.replace("<docId>", DocId)
                     }
                     DocumentUrlResult = await NfaAriba.post('/', DocumentUrlBody);
-                    AuctionDone = DocumentUrlResult.eventTypeName === "Auction" ? "yes" : "no";
+                    AuctionDone = DocumentUrlResult.eventTypeName === "Auction" ? "true" : "false";
                     if (DocumentUrlResult.pendingAwardApprovalTaskId) {
                         TaskID = DocumentUrlResult.pendingAwardApprovalTaskId
                         RfpPublishDate = DocumentUrlResult.createDate;
@@ -202,22 +235,22 @@ if (isMainThread) {
                         FinalDate: DocumentUrlFinalDate,
                     };
 
-                    NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
-                    // NfaDetailsData = "";
+                    // NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
+                    NfaDetailsData = "";
                     if (NfaDetailsData.length) {
                         console.log('RETURNING NFA NUMBER');
                         return NfaDetailsData[0].NfaNumber;
                     } else {
                         function returnamt(amt) {
                             let formattedamt = parseFloat(amt);
-                            formattedamt = formattedamt.toLocaleString('en-IN');;
+                            formattedamt = formattedamt.toLocaleString('en-IN');
                             return formattedamt;
                         }
                         WorkerPromises.push(createWorker(SourcingProjecturl.replace('<projectId>', ProjectID), SourcingProjectBase, 'SourcingProjectUrl'))
                         WorkerPromises.push(createWorker(SourcingProjectTeamsUrl.replace('<projectId>', ProjectID), SourcingProjectBase, 'SourcingProjectTeamsUrl'))
                         WorkerPromises.push(createWorker(DocumentScenariosUrl.replace('<docId>', DocId), DocumentBase, 'DocumentScenariosUrl'))
                         WorkerPromises.push(createWorker(DocumentSupplierInvitationsUrl.replace('<docId>', DocId), DocumentBase, 'DocumentSupplierInvitationsUrl'))
-                        // WorkerPromises.push(createWorker(DocumentItemsUrl.replace('<docId>', DocId), DocumentBase, 'DocumentItemsUrl'))
+                        WorkerPromises.push(createWorker(QuestionsUpdated.replace('<docId>', DocId), DocumentBase, 'QuestionsUpdated'));
                         WokerThreadsResults = await Promise.all(WorkerPromises);
                         WokerThreadsResults.forEach(result => {
                             if (!(result instanceof Error)) {
@@ -282,8 +315,9 @@ if (isMainThread) {
 
                                         }
                                         break;
-                                    case 'DocumentItemsUrl':
+                                    case 'QuestionsUpdated':
                                         DocumentItemsUrlResult = result;
+                                        break;
 
                                 }
                             }
@@ -430,346 +464,763 @@ if (isMainThread) {
 
                                 }
                             }
-                            Supplier.forEach(supp => {
-                                SupplierBidsWorker.push(createWorker(DocumentSupplierBidsUrl.replace('<docId>', DocId).replace('<sName>', supp.SupplierName), DocumentBase, `DocumentSupplierBidsUrl ${supp.SupplierName}`));
-                            })
-                            var DocumentSupplierBidResult = await Promise.all(SupplierBidsWorker);
-                            debugger
-                            DocumentSupplierBidResult.forEach(Questions => {
-                                SupplierBidName = Questions.path.split(" ")[1];
-                                if (Questions && Array.isArray(Questions.payload) && Questions.payload.length > 0) {
-                                    for (const DocSuppBidItem of Questions.payload) {
-                                        const DocSuppBidItemTitle = DocSuppBidItem.item.title;
-                                        SubmissionDate = DocSuppBidItem.submissionDate
-                                        if ("invitationId" in DocSuppBidItem) {
-                                            VendorNames.push({
-                                                VendorName: DocSuppBidItem.invitationId
-                                            })
-                                            if ("bidStatus" in DocSuppBidItem && DocSuppBidItem.bidStatus == "Accepted") {
-                                                if ("invitationId" in DocSuppBidItem) {
-                                                    DocSupBidInvitationID = DocSuppBidItem.invitationId;
-                                                }
-                                                if ("submissionDate" in DocSuppBidItem) {
-                                                    PayDate = DocSuppBidItem.submissionDate;
-                                                    PayDate = PayDate.substring(0, 10);
-                                                    PayDate = returndate(PayDate);
-                                                }
-                                                switch (DocSuppBidItemTitle) {
-                                                    case "Amendment in Existing PO/ARC/Contract":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            AmendmentValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Existing PO/ARC/Contract Value":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "supplierValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            SupplierValueAmount = DocSuppBidItem.item.terms[0].value.supplierValue.amount
-                                                            SupplierValueCurrency = DocSuppBidItem.item.terms[0].value.supplierValue.currency
-                                                            FormattedSupplierValueAmount = `${parseFloat(SupplierValueAmount)} ${SupplierValueCurrency}`
-                                                        }
-                                                        break;
-                                                    case "Existing PO number":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            ExistingPoNumberValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Amendment Value Total NFA Amount ( Contract Value): Incase of Amendment, please enter the total value including amendment+ tolerance value if Any)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            TotalNFAAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
-                                                            TotalNFAAmountCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
-                                                            FormattedTotalNFAAmount = `${parseFloat(TotalNFAAmount)} ${TotalNFAAmountCurrency}`
-                                                        }
-                                                        break;
-                                                    case "Contract Period":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            ContractPeriodValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Budget":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            BudgetValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Order Type Parties contacted and technically accepted ( Rational If on single vendor basis)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            OrderTypePartiesValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Rational for not doing auction,Is Price offer obtained before Auction (If Yes Kindly Attach the deviation approval obtained in NFA Supporting)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            RationalValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Vendors Latest Available Turnover ( In INR Cr.)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            VendorsTurnOverAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
-                                                            VendorsTurnOverCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
-                                                            FormattedVendorsTurnOverAmount = `${parseFloat(VendorsTurnOverAmount)} ${VendorsTurnOverCurrency}`
-                                                        }
-                                                        break;
-                                                    case "Total Vendor Spend for Current FY (In INR Cr.) (Total Open value as on NFA date + Proposed annual value":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            VendorsSpendAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
-                                                            VendorsSpendCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
-                                                            FormattedVendorsSpendAmount = `${parseFloat(VendorsSpendAmount)} ${VendorsSpendCurrency}`
-                                                        }
-                                                        break;
-                                                    case "Rational for awarding contract to dependent partner":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            RationalToDependentPartnerValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Is any new initiative/best practices (Quality/ESG/Automation/Local supplier development etc) considered in this proposal:":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            NewInitiativeBestPracticesValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Negotiation Committee(Name):":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            NegotiationCommitteValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Internal SLAs/KPIs for the contract:":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            InternalSLAsKPIsValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Contract Value (Basic Value)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            ContractBasicValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Is there Any Import Supply under this Proposal?":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            ImportSupplyProposal = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "FTA/EPCG/any other benefit availed for duty saving":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            FTAEPCGValue = DocSuppBidItem.item.terms[0].value.simpleValue
-                                                        }
-                                                        break;
-                                                    case "Approximate Duty Amount in INR":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            DutyAmountINR = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
-                                                            DutyCurrencyINR = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
-                                                            FormattedDutyAmountINR = `${parseFloat(DutyAmountINR)} ${DutyCurrencyINR}`
-                                                        }
-                                                        break;
-                                                    case "Monthly Quantity":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            MonthlyQuantityValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Reason for Post Facto NFA ( If Applicable)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PostFactoNfaReasonValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Pricing in Business Plan (If Applicable)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            BusinessPlanPricingValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Last Purchase Price/CLPP":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            CLPPLastPurchaseAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
-                                                            CLPPLastPurchaseCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
-                                                            FormattedCLPPLastPurchaseAmount = `${parseFloat(CLPPLastPurchaseAmount)} ${CLPPLastPurchaseCurrency}`
-                                                        }
-                                                        break;
-                                                    case "Price Justification":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PriceJustificationValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Deviations from Group philosophy/ Cardinal rules)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            CardinalRulesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "List of Deviation":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            DeviationListValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Terms Of Payment & milestone on which payment will be made":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            TermsOfPaymentValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Packing & Forwarding":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PackagingForwardingValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Logistics":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            LogisticsAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
-                                                            LogisticsCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
-                                                            FormattedLogisticsAmount = `${parseFloat(LogisticsAmount)} ${LogisticsCurrency}`
-                                                        }
-                                                        break;
-                                                    case "Insurance":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            InsuranceValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Penalty clause for Quality":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PenaltyQualityValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Penalty criteria":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PenaltyCriteriaValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Delivery Lead Time":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            DeliveryLeadTimeValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Liquidated Damages":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            LiquidatedDamagesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Liquidated Damages Clause":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            LiquidatedDamagesClValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "PBG and SD":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PBGAndSDValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "PBG and SD Clause":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PBGAndSDClValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Penalty clause for safety- Subcontract(Allowed/ Not Allowed) (If Yes, which party and crendential of the party and technical approval of the party has to be enclosed in NFA)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PenaltyForSafetySubcontractValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Other Key Terms (Eg: Warranty, Inspection Clause, GTC Deviation, Party Delivery. Etc)":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            OtherKeyTermsValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Rationale if not L1":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            RationaleL1Value = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Prices Are":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            PricesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                    case "Approving Plant":
-                                                        if ("terms" in DocSuppBidItem.item &&
-                                                            "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
-                                                            ApprovingPlant = DocSuppBidItem.item.terms[0].value.simpleValue;
-                                                        }
-                                                        break;
-                                                }
+
+                            ///////////////////////questionaries////////////////////////////
+
+                            // const DocSupplierBidItems = [];
+                            var existingVendorEntry = [];
+                            SupplierDetails.forEach(vendorResponse => {
+                                const invitationId = vendorResponse.VendorId;
+
+                                // Loop through each question/item in the payload
+                                DocumentItemsUrlResult.payload.forEach(item => {
+                                    if (!item.terms || item.terms.length === 0) return;
+                                    if (!item.terms[0].participantInitialValues) return;
+
+                                    const questionTitle = item.terms[0].title;
+                                    const participantResponses = item.terms[0].participantInitialValues;
+
+                                    // Loop through all vendor responses for this question
+                                    // participantResponses.forEach(vendorResponse => {
 
 
-                                            }
-                                        }
+                                    // Find the matching supplier
+                                    const supplier = Supplier.find(s => s.SupplierName === invitationId);
+
+                                    if (!supplier) return; // skip if vendor not found
+
+                                    // Initialize or find existing entry for this vendor
+                                    // let existingVendorEntry = DocSupplierBidItems.find(
+                                    //     v => v.DocSupBidInvitationID === invitationId
+                                    // );
+
+
+
+                                    // if (!existingVendorEntry) {
+                                    //     existingVendorEntry = {
+                                    //         SupplierBidName: supplier.SupplierName,
+                                    //         DocSupBidInvitationID: invitationId,
+                                    //         SmVendorId: supplier.SmVendorId,
+                                    //     };
+                                    //     DocSupplierBidItems.push(existingVendorEntry);
+                                    // }
+
+
+                                    // Now handle based on question title
+                                    // const responseValue = participantValue?.simpleValue || "";
+
+                                    switch (questionTitle) {
+                                        case "Amendment in Existing PO/ARC/Contract":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            AmendmentValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Existing PO/ARC/Contract Value":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            SupplierValueAmount = participant?.participantValue.moneyValue;
+                                            SupplierValueCurrency = participant?.participantValue.moneyValue;
+                                            FormattedSupplierValueAmount = `${parseFloat(SupplierValueAmount?.amount)} ${SupplierValueCurrency?.currency}`;
+                                            break;
+
+                                        case "Existing PO number":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            ExistingPoNumberValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Amendment Value Total NFA Amount ( Contract Value): Incase of Amendment, please enter the total value including amendment+ tolerance value if Any)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            SupplierValueAmount = participant?.participantValue.moneyValue;
+                                            SupplierValueCurrency = participant?.participantValue.moneyValue;
+                                            FormattedTotalNFAAmount = `${parseFloat(SupplierValueAmount?.amount)} ${SupplierValueCurrency?.currency}`;
+                                            break;
+
+                                        case "Contract Period":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            ContractPeriodValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Budget":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            Budget = participant?.participantValue.simpleValue;
+                                            break;
+
+                                            //   existingVendorEntry.push({ invitationId, responseValue,questionTitle });
+                                            break;
+                                        case "Order Type Parties contacted and technically accepted ( Rational If on single vendor basis)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            OrderTypePartiesValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Rational for not doing auction,Is Price offer obtained before Auction (If Yes Kindly Attach the deviation approval obtained in NFA Supporting)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            RationalValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Vendors Latest Available Turnover ( In INR Cr.)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            SupplierValueAmount = participant?.participantValue.moneyValue;
+                                            SupplierValueCurrency = participant?.participantValue.moneyValue;
+                                            FormattedVendorsTurnOverAmount = `${parseFloat(SupplierValueAmount?.amount)} ${SupplierValueCurrency?.currency}`;
+                                            break;
+
+                                        case "Total Vendor Spend for Current FY (In INR Cr.) (Total Open value as on NFA date + Proposed annual value)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            SupplierValueAmount = participant?.participantValue.moneyValue;
+                                            SupplierValueCurrency = participant?.participantValue.moneyValue;
+                                            FormattedVendorsSpendAmount = `${parseFloat(SupplierValueAmount?.amount)} ${SupplierValueCurrency?.currency}`;
+                                            break;
+
+                                        case "Rational for awarding contract to dependent partner":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            RationalToDependentPartnerValue = participant?.participantValue.simpleValue;
+                                            break;
+                                        case "Product/Service (Description/Background)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            ProductServiceDescriptionBackground = participant?.participantValue.simpleValue;
+                                            break;
+                                        case "Is any new initiative/best practices (Quality/ESG/Automation/Local supplier development etc) considered in this proposal:":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            NewInitiativeBestPracticesValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Negotiation Committee(Name):":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            NegotiationCommitteValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Internal SLAs/KPIs for the contract:":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            InternalSLAsKPIsValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Contract Value (Basic Value)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            SupplierValueAmount = participant?.participantValue.moneyValue;
+                                            SupplierValueCurrency = participant?.participantValue.moneyValue;
+                                            ContractBasicValue = `${parseFloat(SupplierValueAmount?.amount)} ${SupplierValueCurrency?.currency}`;
+                                            break;
+
+                                        case "Is there Any Import Supply under this Proposal?":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            ImportSupplyProposal = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "FTA/EPCG/any other benefit availed for duty saving":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            FTAEPCGValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Approximate Duty Amount in INR":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            SupplierValueAmount = participant?.participantValue.moneyValue;
+                                            SupplierValueCurrency = participant?.participantValue.moneyValue;
+                                            FormattedDutyAmountINR = `${parseFloat(SupplierValueAmount?.amount)} ${SupplierValueCurrency?.currency}`;
+                                            break;
+
+                                        case "Monthly Quantity":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            MonthlyQuantityValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Reason for Post Facto NFA ( If Applicable)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PostFactoNfaReasonValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Pricing in Business Plan (If Applicable)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            BusinessPlanPricingValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Last Purchase Price/CLPP":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            SupplierValueAmount = participant?.participantValue.moneyValue;
+                                            SupplierValueCurrency = participant?.participantValue.moneyValue;
+                                            FormattedCLPPLastPurchaseAmount = `${parseFloat(SupplierValueAmount?.amount)} ${SupplierValueCurrency?.currency}`;
+                                            break;
+
+                                        case "Price Justification":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PriceJustificationValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Deviations from Group philosophy/ Cardinal rules)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            CardinalRulesValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "List of Deviation":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            DeviationListValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Terms Of Payment & milestone on which payment will be made":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            TermsOfPaymentValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Packing & Forwarding":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PackagingForwardingValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Logistics":
+                                            LogisticsAmount = responseValue?.amount;
+                                            LogisticsCurrency = responseValue?.currency;
+                                            FormattedLogisticsAmount = `${parseFloat(responseValue?.amount)} ${responseValue?.currency}`;
+                                            break;
+
+                                        case "Insurance":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            InsuranceValue = participant?.participantValue?.attachmentValue.fileName;
+                                            break;
+
+                                        case "Penalty clause for Quality":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PenaltyQualityValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Penalty criteria":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PenaltyCriteriaValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Delivery Lead Time":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            DeliveryLeadTimeValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Liquidated Damages":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            LiquidatedDamagesValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Liquidated Damages Clause":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            LiquidatedDamagesClValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "PBG and SD":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PBGAndSDValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "PBG and SD Clause":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PBGAndSDClValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Penalty clause for safety- Subcontract(Allowed/ Not Allowed) (If Yes, which party and crendential of the party and technical approval of the party has to be enclosed in NFA)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PenaltyForSafetySubcontractValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Other Key Terms (Eg: Warranty, Inspection Clause, GTC Deviation, Party Delivery. Etc)":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            OtherKeyTermsValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Rationale if not L1":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            RationaleL1Value = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Prices Are":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            PricesValue = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        case "Approving Plant":
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            ApprovingPlant = participant?.participantValue.simpleValue;
+                                            break;
+
+                                        default:
+                                            // existingVendorEntry[questionTitle] = responseValue;
+                                            break;
                                     }
-                                    DocSupplierBidItems.push({
-                                        SupplierBidName: SupplierBidName,
-                                        DocSupBidInvitationID: DocSupBidInvitationID,
-                                        PayDate: PayDate,
-                                        AmendmentValue: AmendmentValue,
-                                        FormattedSupplierValueAmount: FormattedSupplierValueAmount,
-                                        ExistingPoNumberValue: ExistingPoNumberValue,
-                                        FormattedTotalNFAAmount: FormattedTotalNFAAmount,
-                                        ContractPeriodValue: ContractPeriodValue,
-                                        BudgetValue: BudgetValue,
-                                        OrderTypePartiesValue: OrderTypePartiesValue,
-                                        RationalValue: RationalValue,
-                                        FormattedVendorsTurnOverAmount: FormattedVendorsTurnOverAmount,
-                                        FormattedVendorsSpendAmount: FormattedVendorsSpendAmount,
-                                        RationalToDependentPartnerValue: RationalToDependentPartnerValue,
-                                        NewInitiativeBestPracticesValue: NewInitiativeBestPracticesValue,
-                                        NegotiationCommitteValue: NegotiationCommitteValue,
-                                        InternalSLAsKPIsValue: InternalSLAsKPIsValue,
-                                        ContractBasicValue: ContractBasicValue,
-                                        ImportSupplyProposal: ImportSupplyProposal,
-                                        FTAEPCGValue: FTAEPCGValue,
-                                        FormattedDutyAmountINR: FormattedDutyAmountINR,
-                                        MonthlyQuantityValue: MonthlyQuantityValue,
-                                        PostFactoNfaReasonValue: PostFactoNfaReasonValue,
-                                        BusinessPlanPricingValue: BusinessPlanPricingValue,
-                                        FormattedCLPPLastPurchaseAmount: FormattedCLPPLastPurchaseAmount,
-                                        PriceJustificationValue: PriceJustificationValue,
-                                        CardinalRulesValue: CardinalRulesValue,
-                                        DeviationListValue: DeviationListValue,
-                                        TermsOfPaymentValue: TermsOfPaymentValue,
-                                        PackagingForwardingValue: PackagingForwardingValue,
-                                        FormattedLogisticsAmount: FormattedLogisticsAmount,
-                                        InsuranceValue: InsuranceValue,
-                                        PenaltyQualityValue: PenaltyQualityValue,
-                                        PenaltyCriteriaValue: PenaltyCriteriaValue,
-                                        DeliveryLeadTimeValue: DeliveryLeadTimeValue,
-                                        LiquidatedDamagesValue: LiquidatedDamagesValue,
-                                        LiquidatedDamagesClValue: LiquidatedDamagesClValue,
-                                        PBGAndSDValue: PBGAndSDValue,
-                                        PBGAndSDClValue: PBGAndSDClValue,
-                                        PenaltyForSafetySubcontractValue: PenaltyForSafetySubcontractValue,
-                                        OtherKeyTermsValue: OtherKeyTermsValue,
-                                        RationaleL1Value: RationaleL1Value,
-                                        PricesValue: PricesValue,
-                                        ApprovingPlant: ApprovingPlant
-                                    })
-                                };
+                                    participant = "";
 
-                            })
+
+                                    // });
+                                });
+
+
+                                DocSupplierBidItems.push({
+                                    SupplierBidName: invitationId,
+                                    DocSupBidInvitationID: DocSupBidInvitationID,
+                                    PayDate: PayDate,
+                                    AmendmentValue: AmendmentValue,
+                                    FormattedSupplierValueAmount: FormattedSupplierValueAmount,
+                                    ExistingPoNumberValue: ExistingPoNumberValue,
+                                    FormattedTotalNFAAmount: FormattedTotalNFAAmount,
+                                    ContractPeriodValue: ContractPeriodValue,
+                                    BudgetValue: Budget,
+                                    OrderTypePartiesValue: OrderTypePartiesValue,
+                                    RationalValue: RationalValue,
+                                    FormattedVendorsTurnOverAmount: FormattedVendorsTurnOverAmount,
+                                    FormattedVendorsSpendAmount: FormattedVendorsSpendAmount,
+                                    RationalToDependentPartnerValue: RationalToDependentPartnerValue,
+                                    NewInitiativeBestPracticesValue: NewInitiativeBestPracticesValue,
+                                    NegotiationCommitteValue: NegotiationCommitteValue,
+                                    InternalSLAsKPIsValue: InternalSLAsKPIsValue,
+                                    ContractBasicValue: ContractBasicValue,
+                                    ImportSupplyProposal: ImportSupplyProposal,
+                                    FTAEPCGValue: FTAEPCGValue,
+                                    FormattedDutyAmountINR: FormattedDutyAmountINR,
+                                    MonthlyQuantityValue: MonthlyQuantityValue,
+                                    PostFactoNfaReasonValue: PostFactoNfaReasonValue,
+                                    BusinessPlanPricingValue: BusinessPlanPricingValue,
+                                    FormattedCLPPLastPurchaseAmount: FormattedCLPPLastPurchaseAmount,
+                                    PriceJustificationValue: PriceJustificationValue,
+                                    CardinalRulesValue: CardinalRulesValue,
+                                    DeviationListValue: DeviationListValue,
+                                    TermsOfPaymentValue: TermsOfPaymentValue,
+                                    PackagingForwardingValue: PackagingForwardingValue,
+                                    FormattedLogisticsAmount: FormattedLogisticsAmount,
+                                    InsuranceValue: InsuranceValue,
+                                    PenaltyQualityValue: PenaltyQualityValue,
+                                    PenaltyCriteriaValue: PenaltyCriteriaValue,
+                                    DeliveryLeadTimeValue: DeliveryLeadTimeValue,
+                                    LiquidatedDamagesValue: LiquidatedDamagesValue,
+                                    LiquidatedDamagesClValue: LiquidatedDamagesClValue,
+                                    PBGAndSDValue: PBGAndSDValue,
+                                    PBGAndSDClValue: PBGAndSDClValue,
+                                    PenaltyForSafetySubcontractValue: PenaltyForSafetySubcontractValue,
+                                    OtherKeyTermsValue: OtherKeyTermsValue,
+                                    RationaleL1Value: RationaleL1Value,
+                                    PricesValue: PricesValue,
+                                    ApprovingPlant: ApprovingPlant,
+                                    ProductServiceDescriptionBackground: ProductServiceDescriptionBackground
+
+                                })
+                            });
+
+                            console.log('DocSupplierBidItems', DocSupplierBidItems);
+
+                            ///////////////////////questionaries////////////////////////////
+                            // Supplier.forEach(supp => {
+                            //     SupplierBidsWorker.push(createWorker(DocumentSupplierBidsUrl.replace('<docId>', DocId).replace('<sName>', supp.SupplierName), DocumentBase, `DocumentSupplierBidsUrl ${supp.SupplierName}`));
+                            // })
+                            // var DocumentSupplierBidResult = await Promise.all(SupplierBidsWorker);
+                            // //debugger
+                            // DocumentSupplierBidResult.forEach(Questions => {
+                            //     SupplierBidName = Questions.path.split(" ")[1];
+                            //     if (Questions && Array.isArray(Questions.payload) && Questions.payload.length > 0) {
+                            //         for (const DocSuppBidItem of Questions.payload) {
+                            //             const DocSuppBidItemTitle = DocSuppBidItem.item.title;
+                            //             SubmissionDate = DocSuppBidItem.submissionDate
+                            //             if ("invitationId" in DocSuppBidItem) {
+                            //                 VendorNames.push({
+                            //                     VendorName: DocSuppBidItem.invitationId
+                            //                 })
+                            //                 if ("bidStatus" in DocSuppBidItem && DocSuppBidItem.bidStatus == "Accepted") {
+                            //                     if ("invitationId" in DocSuppBidItem) {
+                            //                         DocSupBidInvitationID = DocSuppBidItem.invitationId;
+                            //                     }
+                            //                     if ("submissionDate" in DocSuppBidItem) {
+                            //                         PayDate = DocSuppBidItem.submissionDate;
+                            //                         PayDate = PayDate.substring(0, 10);
+                            //                         PayDate = returndate(PayDate);
+                            //                     }
+                            //                     switch (DocSuppBidItemTitle) {
+                            //                         case "Amendment in Existing PO/ARC/Contract":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 AmendmentValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Existing PO/ARC/Contract Value":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "supplierValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 SupplierValueAmount = DocSuppBidItem.item.terms[0].value.supplierValue.amount
+                            //                                 SupplierValueCurrency = DocSuppBidItem.item.terms[0].value.supplierValue.currency
+                            //                                 FormattedSupplierValueAmount = `${parseFloat(SupplierValueAmount)} ${SupplierValueCurrency}`
+                            //                             }
+                            //                             break;
+                            //                         case "Existing PO number":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 ExistingPoNumberValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Amendment Value Total NFA Amount ( Contract Value): Incase of Amendment, please enter the total value including amendment+ tolerance value if Any)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 TotalNFAAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
+                            //                                 TotalNFAAmountCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
+                            //                                 FormattedTotalNFAAmount = `${parseFloat(TotalNFAAmount)} ${TotalNFAAmountCurrency}`
+                            //                             }
+                            //                             break;
+                            //                         case "Contract Period":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 ContractPeriodValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Budget":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 BudgetValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Order Type Parties contacted and technically accepted ( Rational If on single vendor basis)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 OrderTypePartiesValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Rational for not doing auction,Is Price offer obtained before Auction (If Yes Kindly Attach the deviation approval obtained in NFA Supporting)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 RationalValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Vendors Latest Available Turnover ( In INR Cr.)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 VendorsTurnOverAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
+                            //                                 VendorsTurnOverCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
+                            //                                 FormattedVendorsTurnOverAmount = `${parseFloat(VendorsTurnOverAmount)} ${VendorsTurnOverCurrency}`
+                            //                             }
+                            //                             break;
+                            //                         case "Total Vendor Spend for Current FY (In INR Cr.) (Total Open value as on NFA date + Proposed annual value":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 VendorsSpendAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
+                            //                                 VendorsSpendCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
+                            //                                 FormattedVendorsSpendAmount = `${parseFloat(VendorsSpendAmount)} ${VendorsSpendCurrency}`
+                            //                             }
+                            //                             break;
+                            //                         case "Rational for awarding contract to dependent partner":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 RationalToDependentPartnerValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Is any new initiative/best practices (Quality/ESG/Automation/Local supplier development etc) considered in this proposal:":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 NewInitiativeBestPracticesValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Negotiation Committee(Name):":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 NegotiationCommitteValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Internal SLAs/KPIs for the contract:":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 InternalSLAsKPIsValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Contract Value (Basic Value)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 ContractBasicValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Is there Any Import Supply under this Proposal?":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 ImportSupplyProposal = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "FTA/EPCG/any other benefit availed for duty saving":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 FTAEPCGValue = DocSuppBidItem.item.terms[0].value.simpleValue
+                            //                             }
+                            //                             break;
+                            //                         case "Approximate Duty Amount in INR":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 DutyAmountINR = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
+                            //                                 DutyCurrencyINR = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
+                            //                                 FormattedDutyAmountINR = `${parseFloat(DutyAmountINR)} ${DutyCurrencyINR}`
+                            //                             }
+                            //                             break;
+                            //                         case "Monthly Quantity":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 MonthlyQuantityValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Reason for Post Facto NFA ( If Applicable)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PostFactoNfaReasonValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Pricing in Business Plan (If Applicable)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 BusinessPlanPricingValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Last Purchase Price/CLPP":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 CLPPLastPurchaseAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
+                            //                                 CLPPLastPurchaseCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
+                            //                                 FormattedCLPPLastPurchaseAmount = `${parseFloat(CLPPLastPurchaseAmount)} ${CLPPLastPurchaseCurrency}`
+                            //                             }
+                            //                             break;
+                            //                         case "Price Justification":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PriceJustificationValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Deviations from Group philosophy/ Cardinal rules)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 CardinalRulesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "List of Deviation":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 DeviationListValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Terms Of Payment & milestone on which payment will be made":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 TermsOfPaymentValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Packing & Forwarding":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PackagingForwardingValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Logistics":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "moneyValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 LogisticsAmount = DocSuppBidItem.item.terms[0].value.moneyValue.amount;
+                            //                                 LogisticsCurrency = DocSuppBidItem.item.terms[0].value.moneyValue.currency;
+                            //                                 FormattedLogisticsAmount = `${parseFloat(LogisticsAmount)} ${LogisticsCurrency}`
+                            //                             }
+                            //                             break;
+                            //                         case "Insurance":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 InsuranceValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Penalty clause for Quality":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PenaltyQualityValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Penalty criteria":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PenaltyCriteriaValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Delivery Lead Time":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 DeliveryLeadTimeValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Liquidated Damages":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 LiquidatedDamagesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Liquidated Damages Clause":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 LiquidatedDamagesClValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "PBG and SD":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PBGAndSDValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "PBG and SD Clause":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PBGAndSDClValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Penalty clause for safety- Subcontract(Allowed/ Not Allowed) (If Yes, which party and crendential of the party and technical approval of the party has to be enclosed in NFA)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PenaltyForSafetySubcontractValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Other Key Terms (Eg: Warranty, Inspection Clause, GTC Deviation, Party Delivery. Etc)":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 OtherKeyTermsValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Rationale if not L1":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 RationaleL1Value = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Prices Are":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 PricesValue = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                         case "Approving Plant":
+                            //                             if ("terms" in DocSuppBidItem.item &&
+                            //                                 "value" in DocSuppBidItem.item.terms[0] && "simpleValue" in DocSuppBidItem.item.terms[0].value) {
+                            //                                 ApprovingPlant = DocSuppBidItem.item.terms[0].value.simpleValue;
+                            //                             }
+                            //                             break;
+                            //                     }
+
+
+                            //                 }
+                            //             }
+                            //         }
+                            //         DocSupplierBidItems.push({
+                            //             SupplierBidName: SupplierBidName,
+                            //             DocSupBidInvitationID: DocSupBidInvitationID,
+                            //             PayDate: PayDate,
+                            //             AmendmentValue: AmendmentValue,
+                            //             FormattedSupplierValueAmount: FormattedSupplierValueAmount,
+                            //             ExistingPoNumberValue: ExistingPoNumberValue,
+                            //             FormattedTotalNFAAmount: FormattedTotalNFAAmount,
+                            //             ContractPeriodValue: ContractPeriodValue,
+                            //             BudgetValue: BudgetValue,
+                            //             OrderTypePartiesValue: OrderTypePartiesValue,
+                            //             RationalValue: RationalValue,
+                            //             FormattedVendorsTurnOverAmount: FormattedVendorsTurnOverAmount,
+                            //             FormattedVendorsSpendAmount: FormattedVendorsSpendAmount,
+                            //             RationalToDependentPartnerValue: RationalToDependentPartnerValue,
+                            //             NewInitiativeBestPracticesValue: NewInitiativeBestPracticesValue,
+                            //             NegotiationCommitteValue: NegotiationCommitteValue,
+                            //             InternalSLAsKPIsValue: InternalSLAsKPIsValue,
+                            //             ContractBasicValue: ContractBasicValue,
+                            //             ImportSupplyProposal: ImportSupplyProposal,
+                            //             FTAEPCGValue: FTAEPCGValue,
+                            //             FormattedDutyAmountINR: FormattedDutyAmountINR,
+                            //             MonthlyQuantityValue: MonthlyQuantityValue,
+                            //             PostFactoNfaReasonValue: PostFactoNfaReasonValue,
+                            //             BusinessPlanPricingValue: BusinessPlanPricingValue,
+                            //             FormattedCLPPLastPurchaseAmount: FormattedCLPPLastPurchaseAmount,
+                            //             PriceJustificationValue: PriceJustificationValue,
+                            //             CardinalRulesValue: CardinalRulesValue,
+                            //             DeviationListValue: DeviationListValue,
+                            //             TermsOfPaymentValue: TermsOfPaymentValue,
+                            //             PackagingForwardingValue: PackagingForwardingValue,
+                            //             FormattedLogisticsAmount: FormattedLogisticsAmount,
+                            //             InsuranceValue: InsuranceValue,
+                            //             PenaltyQualityValue: PenaltyQualityValue,
+                            //             PenaltyCriteriaValue: PenaltyCriteriaValue,
+                            //             DeliveryLeadTimeValue: DeliveryLeadTimeValue,
+                            //             LiquidatedDamagesValue: LiquidatedDamagesValue,
+                            //             LiquidatedDamagesClValue: LiquidatedDamagesClValue,
+                            //             PBGAndSDValue: PBGAndSDValue,
+                            //             PBGAndSDClValue: PBGAndSDClValue,
+                            //             PenaltyForSafetySubcontractValue: PenaltyForSafetySubcontractValue,
+                            //             OtherKeyTermsValue: OtherKeyTermsValue,
+                            //             RationaleL1Value: RationaleL1Value,
+                            //             PricesValue: PricesValue,
+                            //             ApprovingPlant: ApprovingPlant
+                            //         })
+                            //     };
+
+                            // })
                         }
                         //Prem Krishna
                         SupplierCount1 = VendorNames.filter(obj => {
@@ -797,16 +1248,19 @@ if (isMainThread) {
                                     VendorAddress = WokerThreadsResults[a].payload[i].organization.address.city;
                                     VendorInvitationId = WokerThreadsResults[a].payload[i].invitationId;
                                     VendorUserId = WokerThreadsResults[a].payload[i].userId;
+                                    VendorsmVendorID = WokerThreadsResults[a].payload[i].organization.smVendorID
                                     VendorDetailsArr.push({
                                         VendorName: VendorName,
                                         VendorAddress: VendorAddress,
                                         VendorInvitationId: VendorInvitationId,
-                                        VendorUserId: VendorUserId
+                                        VendorUserId: VendorUserId,
+                                        VendorsmVendorID: VendorsmVendorID
                                     })
                                     VendorName = "";
                                     VendorAddress = "";
                                     VendorInvitationId = "";
                                     VendorUserId = "";
+                                    VendorsmVendorID = "";
                                 }
                                 break;
                             }
@@ -829,7 +1283,7 @@ if (isMainThread) {
                             });
                         });
 
-                        console.log(SupplierWithRounds);
+                        console.log("SupplierWithRounds", SupplierWithRounds);
 
 
 
@@ -890,9 +1344,17 @@ if (isMainThread) {
                                         if (term.title === "Freight") {
                                             Freight = term.value.moneyValue.amount;
                                         }
+                                        if (term.title === "Existing PO number") {
+                                            ExistingPoNumber = term.value.simpleValue;
+                                        }
+                                        if (term.title === "Existing PO/ARC/Contract Value") {
+                                            ExistingPoContractValue = term.value.supplierValue.amount;
+                                            ExistingPoContractCurrency = term.value.supplierValue.currency;
+                                            ExistingPoContractValue = `${parsefloat(ExistingPoContractValue)} ${ExistingPoContractCurrency}`;
+                                        }
                                     });
                                     const numericPrice = parseFloat(ItemPrice.split(" ")[0]);
-                                    const UnitPrice = (numericPrice / UnitOfMeasure).toFixed(2);;
+                                    const UnitPrice = (numericPrice / UnitOfMeasure).toFixed(2);
 
                                     ItemsDetails.push({
                                         SupplierId: Id,
@@ -953,6 +1415,215 @@ if (isMainThread) {
                             acc[item.SupplierId].push(item);
                             return acc;
                         }, {});
+
+                        const vendorArray = Object.keys(grouped).map(vendorID => ({
+                            vendorID,
+                            smVendorID: grouped[vendorID][0].VendorsmVendorID  // or VendorsmVendorID if that’s the actual property
+                        }));
+
+                        async function fetchDueDiligenceData(vendorArray) {
+                            const results = [];
+
+                            for (const vendor of vendorArray) {
+                                const DueDiligenceFirstUrlBody = {
+                                    ...DueDiligenceUrlFirstBase,
+                                    url: DueDiligenceFirstUrl
+                                        .replace("<vendorId>", vendor.smVendorID)
+
+                                };
+
+                                const result = await NfaAriba.post('/', DueDiligenceFirstUrlBody);
+                                const questionnaireList = result._embedded.questionnaireList;
+                                for (const q of questionnaireList) {
+                                    const title = q.questionnaire.title;
+                                    if (title === "Due Diligence for Hi-Tech computers") {
+                                        console.log(`Found Due Diligence questionnaire for ${vendor.vendorID}`);
+                                        const WorkSpaceID = q.questionnaire.workspaceId;
+                                        const QuestionnaireID = q.questionnaire.questionnaireId;
+
+                                        const DueDiligenceUrlBody = {
+                                            ...DueDiligenceUrlBase,
+                                            url: DueDiligenceUrl
+                                                .replace("<vendorId>", vendor.smVendorID)
+                                                .replace("<WorkspaceId>", WorkSpaceID)
+                                                .replace("<QuestinonId>", QuestionnaireID),
+                                        };
+
+                                        const result = await NfaAriba.post('/', DueDiligenceUrlBody);
+
+                                        console.log("")
+                                        for (const item of result._embedded.questionAnswerList) {
+                                            let label = item.questionAnswer.questionLabel;
+                                            let value = item.questionAnswer.answer; // Assuming the answer is here                                        
+
+                                            // Example switch-case for assigning values
+                                            switch (label) {
+                                                case "Company Name":
+                                                    CompanyName = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Address":
+                                                    CompanyAddress = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company City":
+                                                    CompanyCity = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company State":
+                                                    CompanyState = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Pincode":
+                                                    CompanyPincode = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Country":
+                                                    CompanyCountry = value;
+                                                    value = '';
+                                                    break;
+                                                case "Class of Company":
+                                                    ClassOfCompany = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Activity":
+                                                    CompanyActivity = value;
+                                                    value = '';
+                                                    break;
+                                                case "NIC Code":
+                                                    NICCode = value;
+                                                    value = '';
+                                                    break;
+                                                case "NIC Code Description":
+                                                    NICCodeDescription = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Status":
+                                                    CompanyStatus = value;
+                                                    value = '';
+                                                    break;
+                                                case "Date of Incorporation":
+                                                    DateOfIncorporation = value;
+                                                    value = '';
+                                                    break;
+                                                case "Age of Company":
+                                                    AgeOfCompany = value;
+                                                    value = '';
+                                                    break;
+                                                case "Listing Status":
+                                                    ListingStatus = value;
+                                                    value = '';
+                                                    break;
+                                                case "Date of Last Balance Sheet":
+                                                    DateOfLastBalanceSheet = value;
+                                                    value = '';
+                                                    break;
+                                                case "Date of Last Annual General Meeting":
+                                                    DateOfLastAGM = value;
+                                                    value = '';
+                                                    break;
+                                                case "Authorized Capital":
+                                                    AuthorizedCapital = value;
+                                                    value = '';
+                                                    break;
+                                                case "Paid Up Capital":
+                                                    PaidUpCapital = value;
+                                                    value = '';
+                                                    break;
+                                                case "Management Details":
+                                                    ManagementDetails = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Number":
+                                                    CompanyNumber = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Email":
+                                                    CompanyEmail = value;
+                                                    value = '';
+                                                    break;
+                                                case "Company Website":
+                                                    CompanyWebsite = value;
+                                                    value = '';
+                                                    break;
+                                                case "Comments":
+                                                    Comments = value;
+                                                    value = '';
+                                                    break;
+                                                default:
+                                                    otherField = value;
+                                                    value = '';
+                                                    break;
+                                            }
+
+
+                                        }
+
+                                        questionnaireArray.push({
+                                            CompanyName: CompanyName,
+                                            CompanyAddress: CompanyAddress,
+                                            CompanyCity: CompanyCity,
+                                            CompanyState: CompanyState,
+                                            CompanyPincode: CompanyPincode,
+                                            CompanyCountry: CompanyCountry,
+                                            ClassOfCompany: ClassOfCompany,
+                                            CompanyActivity: CompanyActivity,
+                                            NICCode: NICCode,
+                                            NICCodeDescription: NICCodeDescription,
+                                            CompanyStatus: CompanyStatus,
+                                            DateOfIncorporation: DateOfIncorporation,
+                                            AgeOfCompany: AgeOfCompany,
+                                            ListingStatus: ListingStatus,
+                                            DateOfLastBalanceSheet: DateOfLastBalanceSheet,
+                                            DateOfLastAGM: DateOfLastAGM,
+                                            AuthorizedCapital: AuthorizedCapital,
+                                            PaidUpCapital: PaidUpCapital,
+                                            ManagementDetails: ManagementDetails,
+                                            CompanyNumber: CompanyNumber,
+                                            CompanyEmail: CompanyEmail,
+                                            CompanyWebsite: CompanyWebsite,
+                                            Comments: Comments
+                                        });
+
+                                        console.log();
+
+
+
+                                        // Perform your custom logic here
+                                    } else {
+                                        // Skip this questionnaire and continue with the next one
+                                        continue;
+                                    }
+                                    // You can continue your logic here with the title
+                                }
+                            }
+
+                            // return questionnaireArray;
+                        }
+                        // async function fetchDueDiligenceData(vendorArray) {
+                        //     const results = [];
+
+                        //     for (const vendor of vendorArray) {
+                        //         const DueDiligenceUrlBody = {
+                        //             ...DueDiligenceUrlBase,
+                        //             url: DueDiligenceUrl
+                        //                 .replace("<vendorId>", vendor.smVendorID)
+                        //                 .replace("<ProjectId>", ProjectID)
+                        //                 .replace("<DocId>", DocId),
+                        //         };
+
+                        //         const result = await NfaAriba.post('/', DueDiligenceUrlBody);
+                        //         results.push(result);
+                        //     }
+
+                        //     return results;
+                        // }
+
+                        // Usage
+                        const data = await fetchDueDiligenceData(vendorArray);
+                        console.log(data);
+
+
 
                         // Step 3: Build final result with MinRound + MaxRound + VendorIds + DocSupplierBidItems
                         const finalResult = Object.entries(grouped).flatMap(([supplierId, items]) => {
@@ -1021,7 +1692,8 @@ if (isMainThread) {
                                 OtherKeyTermsValue: doc?.OtherKeyTermsValue || null,
                                 RationaleL1Value: doc?.RationaleL1Value || null,
                                 PricesValue: doc?.PricesValue || null,
-                                ApprovingPlant: doc?.ApprovingPlant || null
+                                ApprovingPlant: doc?.ApprovingPlant || null,
+                                ProductServiceDescriptionBackground: doc?.ProductServiceDescriptionBackground || null
                             }));
                         });
                         console.log(finalResult);
@@ -1102,7 +1774,7 @@ if (isMainThread) {
                         //sai
                         allPagesResult.forEach(array => {
                             console.log(array)
-                            debugger
+                            // //debugger
 
                             for (let i = 0; i < array.length; i++) {
                                 if (array[i].title == "SBU Unit Location") {
@@ -1172,7 +1844,7 @@ if (isMainThread) {
                             biddingEndDate: round.biddingEndDate
                         }));
 
-                        debugger
+                        //debugger
                         const lastRound = roundsSummary[roundsSummary.length - 1];
                         const lastRoundEndDate = new Date(lastRound.biddingEndDate);
 
@@ -1200,11 +1872,13 @@ if (isMainThread) {
                             AuctionDone: AuctionDone,
                             TaskId: TaskID,
                             SBUUnitLocation: SbuUnitLocation,
-                            maxRound: lastRound.roundNumber
+                            maxRound: lastRound.roundNumber,
+                            CreatedBy: req.user.id === 'anonymous' ? "prem.k@peolsolutions.com" : req.user.id
                         });
 
                         console.log("GeneralDetailsArr", GeneralDetailsArr);
                         const insertGeneral = await INSERT.into(NfaDetails).entries(GeneralDetailsArr);
+                        console.log(insertGeneral);
                         //INSERTING GENERAL DETAILS
                         // for (const entry of GeneralDetailsArr) {
                         //     console.log('typeOF', typeof (entry.NfaNumber));
@@ -1218,14 +1892,14 @@ if (isMainThread) {
                         //             .where({ NfaNumber: entry.NfaNumber });
                         //     } else {
                         //         // record does not exist → insert it
-                        //         const insertGeneral = await INSERT.into(NfaDetails).entries(entry);
+                        //         // const insertGeneral = await INSERT.into(NfaDetails).entries(entry);
                         //         console.log('insertGeneral', insertGeneral);
                         //     }
                         // }
 
 
 
-                        debugger
+                        //debugger
                         ///////////////////////VENDOR DETAILS//////////////////////////
 
                         function transformForSchema(finalResult) {
@@ -1263,7 +1937,7 @@ if (isMainThread) {
                                         AmendmentValue: row.AmendmentValue,
                                         FormattedSupplierValueAmount: row.FormattedSupplierValueAmount,
                                         ExistingPoNumberValue: row.ExistingPoNumberValue,
-                                        FormattedTotalNFAAmount: row.FormattedTotalNFAAmount,
+                                        AmendmentValueTotalNfaAmount: row.FormattedTotalNFAAmount,
                                         ContractPeriodValue: row.ContractPeriodValue,
                                         FormattedVendorsTurnOverAmount: row.FormattedVendorsTurnOverAmount,
                                         FormattedVendorsSpendAmount: row.FormattedVendorsSpendAmount,
@@ -1292,7 +1966,8 @@ if (isMainThread) {
                                         RationaleL1Value: row.RationaleL1Value,
                                         PricesValue: row.PricesValue,
                                         ApprovingPlant: row.ApprovingPlant,
-                                        NfaVendorItemsDetails: []
+                                        NfaVendorItemsDetails: [],
+                                        ProductServiceDescriptionBackground: row.ProductServiceDescriptionBackground
                                     };
                                 }
 
@@ -1359,20 +2034,21 @@ if (isMainThread) {
                                     });
                                 });
 
-                                const spendAmount = vendor.FormattedVendorsSpendAmount || 0;
-                                const turnoverAmount = vendor.FormattedVendorsTurnOverAmount || 1;
+                                const spendAmount = parseFloat(vendor.FormattedVendorsSpendAmount.replace(/[^0-9.]/g, '')) || 0;
+                                const turnoverAmount = parseFloat(vendor.FormattedVendorsTurnOverAmount.replace(/[^0-9.]/g, '')) || 0;
+
                                 const isVendorDependency = (spendAmount / turnoverAmount) * 100;
                                 // Find split entry for this vendor
                                 const splitEntry = vendorSplitArray.find(v => v.vendorId === vendor.SupplierId);
-                                if(splitEntry){
+                                if (splitEntry) {
                                     SplitAmount = splitEntry.splitAmount;
                                 }
-                                if(SplitAmount){
-                                        IsAwarded = "Yes"
-                                    }
-                                    else {
-                                        IsAwarded = "No"
-                                    }
+                                if (SplitAmount) {
+                                    IsAwarded = "Yes"
+                                }
+                                else {
+                                    IsAwarded = "No"
+                                }
                                 // Push parent-round object
                                 transformedResultPerRound.push({
                                     ProposedVendorCode: vendor.SupplierId,
@@ -1392,7 +2068,7 @@ if (isMainThread) {
                                     PenaltyClauseForQuality: vendor.PenaltyQualityValue,
                                     PenaltyCriteria: vendor.PenaltyCriteriaValue,
                                     RationaleIfNotL1: vendor.RationaleL1Value,
-                                    AmendmentValueTotalNfaAmount: vendor.AmendmentValue,
+                                    AmendmentValueTotalNfaAmount: vendor.AmendmentValueTotalNfaAmount,
                                     Budget: vendor.BudgetValue,
                                     RationalForNotDoingAuction: vendor.RationalValue,
                                     IsAnyNewInitiativeBestpractices: vendor.NewInitiativeBestPracticesValue,
@@ -1401,7 +2077,7 @@ if (isMainThread) {
                                     LastPurchasePriceClpp: vendor.FormattedCLPPLastPurchaseAmount,
                                     ContractPeriod: vendor.ContractPeriodValue,
                                     OrderTypePartiesContactedAndTechnicallyAccepted: vendor.OrderTypePartiesValue,
-                                    IsVendorDependency: isVendorDependency,
+                                    IsVendorDependency: isVendorDependency > 50 ? true : false,
                                     VendorsLatestAvailableTurnover: vendor.FormattedVendorsTurnOverAmount,
                                     TotalVendorSpendforCurrentFY: vendor.FormattedVendorsSpendAmount,
                                     InternalSLAsKPIsForTheContract: vendor.InternalSLAsKPIsValue,
@@ -1422,7 +2098,8 @@ if (isMainThread) {
                                     OtherKeyTerms: vendor.OtherKeyTermsValue,
                                     RationalForAwardingContractToDependentPartner: vendor.RationalToDependentPartnerValue,
                                     DeliveryLeadTime: vendor.DeliveryLeadTimeValue,
-                                    NfaVendorItemsDetails: itemsOfRound // only items of this round
+                                    NfaVendorItemsDetails: itemsOfRound,// only items of this round
+                                    ProductServiceDescriptionBackground: vendor.ProductServiceDescriptionBackground
                                 });
                             });
                         });
@@ -1434,7 +2111,7 @@ if (isMainThread) {
 
                         //Rounds 
                         console.log("transformedResultPerRound", transformedResultPerRound);
-                        debugger
+                        //debugger
                         for (const parent of transformedResultPerRound) {
                             const parentEntry = {
                                 ProposedVendorCode: parent.ProposedVendorCode,
@@ -1499,13 +2176,35 @@ if (isMainThread) {
                                     Quantity: item.UnitOfMeasure,
                                     UnitPrice: item.UnitPrice,
                                     DiscountPercentage: item.DiscountPercentage,
-                                    IndianTaxPER : item.TaxPercentage
+                                    IndianTaxPER: item.TaxPercentage
                                 }))
                                 await INSERT.into(NfaVendorItemsDetails).entries(childEntries);
                             }
                         }
-                        debugger
+                        //debugger
+                        WorkflowHistory.push({
+                            NfaNumber: DocId,
+                            level: 1,
+                            EmployeeID: "prem.k@peolsolutions.com",
+                            EmployeeName: "Prem Krishna",
+                        });
 
+                        // Level 2 entry
+                        WorkflowHistory.push({
+                            NfaNumber: DocId,
+                            level: 2,
+                            EmployeeID: "prem.k@peolsolutions.com",
+                            EmployeeName: "Prem Krishna",
+                        });
+                        // Insert all entries at once
+                        await INSERT.into(NfaWorkflowHistory).entries(WorkflowHistory);
+                        console.log("Inserted Into WorkFlow History")
+
+                        // questions 
+
+
+
+                        // questions 
 
                         // finalResult.forEach(vendor => {
                         //     // Find the vendor location once from SupplierDetails
@@ -1618,7 +2317,7 @@ if (isMainThread) {
                         //     });
                         // });
 
-                        debugger
+                        //debugger
 
 
 

@@ -5,7 +5,7 @@ using {
     managed
 } from '@sap/cds/common';
 
-entity NfaDetails {
+entity NfaDetails @managed {
     key NfaNumber                              : String default 'def';
         //listPage//
         BUORPurchasingGroup                    : String @UI.Hidden; //
@@ -72,6 +72,22 @@ entity NfaDetails {
         // SubmittedBy                                : String;
         // SubmittedDate                              : String;
         // ExistingPOARCContractValue                 : String;
+
+        BaseLanguage                           : String; //
+        Commodity                              : String; //
+        Regions                                : String; //
+        Departments                            : String; //
+        Owner                                  : String; //
+        Version                                : String; //
+        AnticipatedContractEffectiveDate       : String; //
+        TargetSavings                          : String; //
+        LastModified                           : String; //
+        Origin                                 : String; //
+        DueDeligenceStatus                     : Boolean; //
+        DueDeligenceOrigin                     : String; //
+        RiskCategory                           : String; //
+        TotalSpend                             : String; //
+
 
         NfaDetailsToNfaEventHistory            : Composition of many NfaEventHistory
                                                      on NfaDetailsToNfaEventHistory.NfaEventHistoryToNfaDetails = $self;
@@ -225,6 +241,43 @@ entity NfaVendorData {
                                                               on NfaVendorDataToNfaDetails.NfaNumber = NfaNumber;
         NfaVendorDataToNfaVendorItemsDetails            : Composition of many NfaVendorItemsDetails
                                                               on NfaVendorDataToNfaVendorItemsDetails.NfaVendorItemsDetailsToNfaVendorData = $self;
+        NfaVendorDataToNfaVendorDueDeligenceDetails     : Composition of many NfaVendorDueDeligenceDetails
+                                                              on NfaVendorDataToNfaVendorDueDeligenceDetails.NfaVendorDueDeligenceDetailsToNfaVendorData = $self;
+
+
+}
+
+entity NfaVendorDueDeligenceDetails {
+    key ID                                          : UUID;
+    key ProposedVendorCode                          : String;
+        CompanyName                                 : String;
+        CompanyAddress                              : String;
+        CompanyCity                                 : String;
+        CompanyState                                : String;
+        CompanyPincode                              : String;
+        CompanyCountry                              : String;
+        CompanyCompany                              : String;
+        CompanyActivity                             : String;
+        NICCode                                     : String;
+        NICCodeDescription                          : String;
+        CompanyStatus                               : String;
+        DateofIncorporation                         : String;
+        AgeofCompany                                : String;
+        ListingStatus                               : String;
+        DateofLastBalanceSheet                      : String;
+        DateofLastAnnualGeneralMeeting              : String;
+        AuthorizedCapital                           : String;
+        PaidUpCapital                               : String;
+        ManagementDetails                           : String;
+        CompanyNumber                               : String;
+        CompanyEmail                                : String;
+        CompanyWebsite                              : String;
+        Comments                                    : String;
+        RiskScore                                   : String;
+        RiskGrade                                   : String;
+        Description                                 : String;
+        NfaVendorDueDeligenceDetailsToNfaVendorData : Association to one NfaVendorData
+                                                          on NfaVendorDueDeligenceDetailsToNfaVendorData.ProposedVendorCode = ProposedVendorCode;
 
 
 }

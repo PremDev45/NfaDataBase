@@ -15,6 +15,7 @@ service NfaForm {
     entity Rules                 as projection on db.Rules;
     entity Approvers             as projection on db.Approvers;
     function getDataForUserAndProject(user: String, project: String) returns String;
+    function getHrJob(NfaNumber:String) returns String;
 }
 
 service NfaApproval {
