@@ -1,12 +1,15 @@
 const cds = require('@sap/cds');
 const { log } = require('node:console');
 const { url } = require('node:inspector');
+const path = require('path');
+const fs = require('fs');
+const xlsx = require('xlsx');
 const { Worker, workerData, parentPort, isMainThread } = require('node:worker_threads');
 // projectId = #WS79052482 ///// new one = #WS84836442 ////// #WS85279377
 if (isMainThread) {
     module.exports = cds.service.impl(async function () {
         let {
-            NfaDetails, NfaVendorData, NfaVendorItemsDetails, NfaWorkflowHistory
+            NfaDetails, NfaVendorData, NfaVendorItemsDetails, NfaWorkflowHistory, NfaVendorDueDeligenceDetails, NfaVendorDueDeligenceDetailsGrade, RulesApprovers
         } = this.entities;
         var NfaAriba = await cds.connect.to("NfaAriba")
 
@@ -37,8 +40,6 @@ if (isMainThread) {
             query: "realm=PEOLSOLUTIONSDSAPP-T&apikey=3TTrakeyAxb5iVfcZ9kdN4B9jMyyGxOJ"
         };
 
-
-
         //sourcing project api's
 
         var SourcingProjecturl = "https://openapi.au.cloud.ariba.com/api/sourcing-project-management/v2/prod/projects/<projectId>"
@@ -51,20 +52,26 @@ if (isMainThread) {
 
         //Docs
         var DocumentUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>"
+
         //scenarios
         var DocumentScenariosUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/scenarios"
+
         //supplierInvitations
         var DocumentSupplierInvitationsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/supplierInvitations"
+
         //items with pages
         var DocumentItemsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/items/pages/<pageNo>";
+
         //questioneries upda//items with pages
         var QuestionsUpdated = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/items";
+
         //supplierBids
         var DocumentSupplierBidsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/supplierBids/<sName>"
+
         //rounds
         var DocumentRoundsUrl = "https://openapi.au.cloud.ariba.com/api/sourcing-event/v2/prod/events/<docId>/rounds";
-        //supplier data pagination api's
 
+        //supplier data pagination api's
         var SupplierQuestionariesUrl = "https://openapi.au.cloud.ariba.com/api/supplierdatapagination/v4/prod//vendors/<vendorId>/workspaces/questionnaires/qna";
 
         //  Due Dilegence
@@ -85,6 +92,28 @@ if (isMainThread) {
         //     let jumbleDate = y + "/" + m + "/" + d
         //     return jumbleDate
         // }
+
+        //  function getAllRounds(RoundsData) {
+        //     // Normalize to array
+        //     const roundsArray = Array.isArray(RoundsData)
+        //         ? RoundsData
+        //         : (RoundsData && Array.isArray(RoundsData.payload))
+        //             ? RoundsData.payload
+        //             : (RoundsData && typeof RoundsData === 'object')
+        //                 ? Object.values(RoundsData)
+        //                 : [];
+
+        //     return roundsArray
+        //         .map(r => ({
+        //             roundNumber: Number(r.roundNumber),
+        //             biddingStartDate: r.biddingStartDate,
+        //             suppliers: r.suppliers,
+        //             supplierCount: Array.isArray(r.suppliers) ? r.suppliers.length : 0
+        //         }))
+        //         .sort((a, b) => a.roundNumber - b.roundNumber);
+        // }
+
+
         function returndate(input) {
             const date = new Date(input);
             if (isNaN(date)) return input; // fallback if invalid
@@ -96,34 +125,30 @@ if (isMainThread) {
             return `${y}/${m}/${d}`;  // "2025/09/26"
         }
 
-        function getAllRounds(RoundsData) {
-            // Normalize to array
-            const roundsArray = Array.isArray(RoundsData)
-                ? RoundsData
-                : (RoundsData && Array.isArray(RoundsData.payload))
-                    ? RoundsData.payload
-                    : (RoundsData && typeof RoundsData === 'object')
-                        ? Object.values(RoundsData)
-                        : [];
 
-            return roundsArray
-                .map(r => ({
-                    roundNumber: Number(r.roundNumber),
-                    biddingStartDate: r.biddingStartDate,
-                    suppliers: r.suppliers,
-                    supplierCount: Array.isArray(r.suppliers) ? r.suppliers.length : 0
-                }))
-                .sort((a, b) => a.roundNumber - b.roundNumber);
+        function returndatenew(input) {
+            const date = new Date(Number(input)); // ensure it's a number
+            if (isNaN(date)) return input; // fallback if invalid
+
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1); // month 1-12
+            const d = String(date.getDate());      // day 1-31
+
+            return `${d}/${m}/${y}`;  // e.g., "1/1/2010"
         }
+
+
+
+
         this.on('getDataForUserAndProject', async (req) => {
             //debugger
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
             /////*****************LET*****************/////
-            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData = 0, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds, RfpPublishDate, BestSupplierID, participant;
+            let SourcingProjectDocsBody, SourcingProjectDocsResult, DocId, DocumentUrlBody, DocumentUrlResult, Date1, Date2, DiffTime, DiffDays, NfaDetailsData = 0, WokerThreadsResults, WokerThreadsResults1, InsertNfaDetailsBody, ExistingNfaRecord, InsertQueryForNfaDetails, CurrentId, EventNo, Rounds, RfpPublishDate, BestSupplierID, participant, isVendorDependency;
 
             //Initialize as Array
-            let InsertEntriesRounds = [], BestBidScenario = [], VendorsAwardedRecords = [], vendorSplitArray = []
+            let InsertEntriesRounds = [], BestBidScenario = [], VendorsAwardedRecords = [], vendorSplitArray = [], itemsForCB = [];
             /////*****************LET*****************/////
 
 
@@ -142,18 +167,10 @@ if (isMainThread) {
             //quetions
             let questionnaireArray = []; // your main array
 
-            // Initialize variables (optional, ensures they exist)
-            let CompanyName, CompanyAddress, CompanyCity, CompanyState, CompanyPincode, CompanyCountry,
-                ClassOfCompany, CompanyActivity, NICCode, NICCodeDescription, CompanyStatus, DateOfIncorporation,
-                AgeOfCompany, ListingStatus, DateOfLastBalanceSheet, DateOfLastAGM, AuthorizedCapital, PaidUpCapital,
-                ManagementDetails, CompanyNumber, CompanyEmail, CompanyWebsite, Comments, otherField;
-
-
-
             //Initialize as Empty 
             var SourcingProjectDescription = "", SourcingProjectBaseLinespend = "", DocumentScenariosTotAwardPrice = "", DocumentScenariosTotAwardSavings = "", SupplierName = "", VendorID = "", PVCode = "", SmID = "", SupplierData = "", GstNo = "", CEScore = "", SupplierAdress = "", SupplierStreetName = "", SupplierRegion = "", SupplierPostalCode = "", SupplierCity = "", SupplierHouseID = "", SupplierCountry = "",
                 SupplierContactPhone = "", SupplierMobilePhone = "", SupplierMail = "", SupplierLastName = "", SupplierFirstName = "", SupplierContact = "", SubmissionDate = "", DocSupBidInvitationID = "", PayDate = "", AmendmentValue = "", SupplierValueAmount = "", SupplierValueCurrency = "",
-                ExistingPoNumberValue = "", TotalNFAAmount = "", TotalNFAAmountCurrency = "", ContractPeriodValue = "", BudgetValue = "", OrderTypePartiesValue = "", FormattedTotalNFAAmount = "", FormattedSupplierValueAmount = "", RationalValue = "",
+                ExistingPoNumberValue = "", TotalNFAAmount = "", TotalNFAAmountCurrency = "", ContractPeriodValue = "", BudgetValue = "", OrderTypePartiesValue = "", FormattedTotalNFAAmount = "", FormattedSupplierValueAmount = "", RationalValue = "", Budget = "", HrClearanceCertificates = '', JobClearanceCertificates = '',
                 VendorsTurnOverAmount = "", VendorsTurnOverCurrency, FormattedVendorsTurnOverAmount = "", VendorsSpendAmount = "", VendorsSpendCurrency = "", FormattedVendorsSpendAmount = "", RationalToDependentPartnerValue = "", NewInitiativeBestPracticesValue = "", NegotiationCommitteValue = "", InternalSLAsKPIsValue = "",
                 ContractBasicValue = "", ImportSupplyProposal = "", FTAEPCGValue = "", MonthlyQuantityValue = "", PostFactoNfaReasonValue = "", BusinessPlanPricingValue = "",
                 CLPPLastPurchaseAmount = "", CLPPLastPurchaseCurrency = "", FormattedCLPPLastPurchaseAmount = "", PriceJustificationValue = "", CardinalRulesValue = "", DeviationListValue = "", TermsOfPaymentValue = "", PackagingForwardingValue = "", LogisticsAmount = "", LogisticsCurrency = "", FormattedLogisticsAmount = "", InsuranceValue = "",
@@ -196,6 +213,22 @@ if (isMainThread) {
 
                 if (SourcingProjectDocsResult.payload[0].type == 'RFx' && SourcingProjectDocsResult.payload[0].status != 'Draft') {
                     DocId = SourcingProjectDocsResult.payload[0].internalId;
+                    let extraFields = {
+                        BaseLanguage: "",
+                        Commodity: "",
+                        Regions: "",
+                        Departments: "",
+                        Owner: "",
+                        Version: "",
+                        AnticipatedContractEffectiveDate: "",
+                        TargetSavings: "",
+                        LastModified: "",
+                        Origin: "",
+                        DueDeligenceStatus: false, // boolean
+                        DueDeligenceOrigin: "None",
+                        RiskCategory: "",
+                        TotalSpend: ""
+                    };
                     DocumentUrlBody = {
                         ...DocumentBase,
                         url: DocumentUrl.replace("<docId>", DocId)
@@ -205,6 +238,12 @@ if (isMainThread) {
                     if (DocumentUrlResult.pendingAwardApprovalTaskId) {
                         TaskID = DocumentUrlResult.pendingAwardApprovalTaskId
                         RfpPublishDate = DocumentUrlResult.createDate;
+                        extraFields.BaseLanguage = SourcingProjectDocsResult.payload[0].baseLanguage;
+                        extraFields.Version = SourcingProjectDocsResult.payload[0].docVersion;
+                        // extraFields. = SourcingProjectDocsResult.payload[0].createDate;
+                        extraFields.LastModified = SourcingProjectDocsResult.payload[0].lastModified;
+                        extraFields.Owner = SourcingProjectDocsResult.payload[0].owner.name;
+
                     }
                     else
                         return 'No Data for this Project!'
@@ -235,12 +274,14 @@ if (isMainThread) {
                         FinalDate: DocumentUrlFinalDate,
                     };
 
-                    // NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
-                    NfaDetailsData = "";
+                    NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
+
                     if (NfaDetailsData.length) {
                         console.log('RETURNING NFA NUMBER');
                         return NfaDetailsData[0].NfaNumber;
                     } else {
+                        let isHr = false;
+                        let isJob = false;
                         function returnamt(amt) {
                             let formattedamt = parseFloat(amt);
                             formattedamt = formattedamt.toLocaleString('en-IN');
@@ -268,11 +309,22 @@ if (isMainThread) {
                                         TemplateProjectTitle = result.templateProjectTitle;
                                         BeginDate = result.beginDate;
                                         ProjectCurrencyBaseCurrency = result.currency;
+                                        extraFields.Commodity = result.commodities[0].name;
+                                        extraFields.Regions = result.regions[0].name;
+                                        extraFields.Departments = result.departments[0].name;
+                                        extraFields.TargetSavings = result.targetSavingPct;
 
                                         break;
                                     case 'DocumentScenariosUrl':
-                                        if (result.payload[0].eventId && !(result instanceof Error)) {
-                                            DocumentScenariosSupCount = result.payload[0].selectedSuppliersCount || "";
+                                        let index = -1;
+                                        for (var i = 0; i < result.payload.length; i++) {
+                                            if (result.payload[i].systemTag === 'BEST_BID') {
+                                                index = i;
+                                                break;
+                                            }
+                                        }
+                                        if (index != -1 && result.payload[index].eventId && !(result instanceof Error)) {
+                                            DocumentScenariosSupCount = result.payload[index].selectedSuppliersCount || "";
                                             DocumentScenariosUrlResult = result;
                                             BestBidScenario = DocumentScenariosUrlResult.payload.find(
                                                 s => s.title === "Best Bid"
@@ -300,9 +352,12 @@ if (isMainThread) {
                                                     });
                                                 })
                                             }
-                                            DocumentScenariosTotAwardPrice = returnamt(result.payload[0].totalAwardPrice.amount)
-                                            DocumentScenariosTotAwardSavings = returnamt(result.payload[0].totalAwardSavings.difference.amount)
-                                            let extendedPriceTerms = result.payload[0].rollupTerms.filter(term => term.fieldId === "EXTENDEDPRICE");
+                                            DocumentScenariosTotAwardPrice = returnamt(result.payload[index].totalAwardPrice.amount)
+                                            DocumentScenariosTotAwardSavings = returnamt(
+                                                result.payload[index]?.totalAwardSavings?.difference?.amount ?? 0
+                                            );
+
+                                            let extendedPriceTerms = result.payload[index].rollupTerms.filter(term => term.fieldId === "EXTENDEDPRICE");
 
                                             extendedPriceTerms.forEach(term => {
                                                 HistoricalAmount = term.historyValue.moneyValue.amount;
@@ -310,9 +365,13 @@ if (isMainThread) {
                                                 Savings = HistoricalAmount - CurrentAmount; // will give the difference
                                             });
 
-                                            SubjectofProposalOROrder = result.payload[0].title;
-
-
+                                            SubjectofProposalOROrder = result.payload[index].title;
+                                            let terms = result.payload[index].rollupTerms;
+                                            for (let i = 0; i < terms.length; i++) {
+                                                if (terms[i].title === 'Extended Price') {
+                                                    extraFields.TotalSpend = terms[i].value.moneyValue.amount;
+                                                }
+                                            }
                                         }
                                         break;
                                     case 'QuestionsUpdated':
@@ -449,7 +508,10 @@ if (isMainThread) {
                                         SupplierMobilePhone: SupplierMobilePhone,
                                         SupplierContactPhone: SupplierContactPhone,
                                         SupplierContact: SupplierContact,
-                                        SupplierFinalAddress: `${SupplierStreetName}, ${SupplierRegion}, ${SupplierPostalCode}, ${SupplierCountry}`
+                                        SupplierFinalAddress: `${SupplierStreetName}, ${SupplierRegion}, ${SupplierPostalCode}, ${SupplierCountry}`.split(',')
+                                            .map(item => item.trim())    // remove leading/trailing spaces
+                                            .filter(Boolean)             // remove empty strings
+                                            .join(', ')                 // join back into a clean string
                                     })
                                 }
 
@@ -733,6 +795,21 @@ if (isMainThread) {
                                             InsuranceValue = participant?.participantValue?.attachmentValue.fileName;
                                             break;
 
+                                        case "HR Clearance Certificates":
+                                            isHr = true;
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            HrClearanceCertificates = participant?.participantValue?.attachmentValue.fileName;
+                                            break;
+                                        case "Job Clearance Certificates":
+                                            isJob = true;
+                                            participant = participantResponses.find(
+                                                p => p.invitationId === invitationId
+                                            );
+                                            JobClearanceCertificates = participant?.participantValue?.attachmentValue.fileName;
+                                            break;
+
                                         case "Penalty clause for Quality":
                                             participant = participantResponses.find(
                                                 p => p.invitationId === invitationId
@@ -861,6 +938,8 @@ if (isMainThread) {
                                     PackagingForwardingValue: PackagingForwardingValue,
                                     FormattedLogisticsAmount: FormattedLogisticsAmount,
                                     InsuranceValue: InsuranceValue,
+                                    HrClearanceCertificates: HrClearanceCertificates,
+                                    JobClearanceCertificates: JobClearanceCertificates,
                                     PenaltyQualityValue: PenaltyQualityValue,
                                     PenaltyCriteriaValue: PenaltyCriteriaValue,
                                     DeliveryLeadTimeValue: DeliveryLeadTimeValue,
@@ -1274,15 +1353,19 @@ if (isMainThread) {
                         const AllSuppliers = Array.from(
                             new Set(RoundsData.payload.flatMap(p => p.suppliers))
                         );
+                        let roundMap = {};
+
                         RoundsData.payload.forEach(round => {
                             round.suppliers.forEach(supplier => {
                                 SupplierWithRounds.push({
                                     Supplier: supplier,
                                     Rounds: round.roundNumber
                                 });
+                                roundMap[supplier] = Math.max(roundMap[supplier] || 0, round.roundNumber);
                             });
                         });
 
+                        console.log("roundMap", roundMap);
                         console.log("SupplierWithRounds", SupplierWithRounds);
 
 
@@ -1318,41 +1401,118 @@ if (isMainThread) {
                                     const ItemDescription = itemData.item.itemData?.Description?.value || "";
                                     const BidRank = itemData.bidRank || null;
 
-                                    let ItemPrice, UnitOfMeasure, UnitOfMeasureCode, DiscountPercentage, ItemPriceCurrency, ExtendedPrice, ExtendedPriceCurrency;
+                                    let Price, PriceCurrency, ItemPrice, UnitOfMeasure, UnitOfMeasureCode, DiscountPercentage, ItemPriceCurrency, ExtendedPrice, ExtendedPriceCurrency, Savings, SavingsPercent, MaterialCost, LabourCost, ProcessingCost, PackagingCost, MaterialCode, Profit, LandedPrice;
+
 
                                     terms.forEach(term => {
-                                        if (term.title === "Total Cost") {
-                                            ItemPrice = term.value.moneyValue.amount;
-                                            ItemPriceCurrency = term.value.moneyValue.currency;
-                                            ItemPrice = `${parseFloat(ItemPrice)} ${ItemPriceCurrency}`;
-                                        }
-                                        if (term.title === "Extended Price") {
-                                            ExtendedPrice = term.value.moneyValue.amount;
-                                            ExtendedPriceCurrency = term.value.moneyValue.currency;
-                                            ExtendedPrice = `${parseFloat(ExtendedPrice)} ${ExtendedPriceCurrency}`;
-                                        }
-                                        if (term.title === "Quantity") {
-                                            UnitOfMeasure = term.value.quantityValue.amount;
-                                            UnitOfMeasureCode = term.value.quantityValue.unitOfMeasureCode;
-                                        }
-                                        if (term.title === "Discount Percentage") {
-                                            DiscountPercentage = term.value.bigDecimalValue;
-                                        }
-                                        if (term.title === "Tax %") {
-                                            TaxPercentage = term.value.bigDecimalValue;
-                                        }
-                                        if (term.title === "Freight") {
-                                            Freight = term.value.moneyValue.amount;
-                                        }
-                                        if (term.title === "Existing PO number") {
-                                            ExistingPoNumber = term.value.simpleValue;
-                                        }
-                                        if (term.title === "Existing PO/ARC/Contract Value") {
-                                            ExistingPoContractValue = term.value.supplierValue.amount;
-                                            ExistingPoContractCurrency = term.value.supplierValue.currency;
-                                            ExistingPoContractValue = `${parsefloat(ExistingPoContractValue)} ${ExistingPoContractCurrency}`;
+                                        const { title, value } = term;
+
+                                        switch (title) {
+                                            case "Price":
+                                                const priceAmount = value?.moneyValue?.amount ?? 0;
+                                                const priceCurrency = value?.moneyValue?.currency ?? "";
+                                                Price = `${parseFloat(priceAmount)} ${priceCurrency}`;
+                                                break;
+
+                                            case "Quantity":
+                                                UnitOfMeasure = value?.quantityValue?.amount ?? 0;
+                                                UnitOfMeasureCode = value?.quantityValue?.unitOfMeasureCode ?? "";
+                                                break;
+
+                                            case "Extended Price":
+                                                const extendedAmount = value?.moneyValue?.amount ?? 0;
+                                                const extendedCurrency = value?.moneyValue?.currency ?? "";
+                                                ExtendedPrice = `${parseFloat(extendedAmount)} ${extendedCurrency}`;
+                                                break;
+
+                                            case "Total Cost":
+                                                const totalCostAmount = value?.moneyValue?.amount ?? 0;
+                                                const totalCostCurrency = value?.moneyValue?.currency ?? "";
+                                                ItemPrice = `${parseFloat(totalCostAmount)} ${totalCostCurrency}`;
+                                                break;
+
+                                            case "Savings":
+                                                const savingsAmount = value?.moneyDifferenceValue?.difference?.amount ?? 0;
+                                                const savingsCurrency = value?.moneyDifferenceValue?.difference?.currency ?? "";
+                                                Savings = `${parseFloat(savingsAmount)} ${savingsCurrency}`;
+                                                SavingsPercent = value?.moneyDifferenceValue?.percentage ?? 0;
+                                                break;
+
+                                            case "Material Cost":
+                                                MaterialCost = `${parseFloat(value?.moneyValue?.amount ?? 0)} ${value?.moneyValue?.currency ?? ""}`;
+                                                break;
+
+                                            case "Labour Cost":
+                                                LabourCost = `${parseFloat(value?.moneyValue?.amount ?? 0)} ${value?.moneyValue?.currency ?? ""}`;
+                                                break;
+
+                                            case "Processing Cost ( Non-labour manufacturing cost)":
+                                                ProcessingCost = `${parseFloat(value?.moneyValue?.amount ?? 0)} ${value?.moneyValue?.currency ?? ""}`;
+                                                break;
+
+                                            case "Packaging Cost":
+                                                PackagingCost = `${parseFloat(value?.moneyValue?.amount ?? 0)} ${value?.moneyValue?.currency ?? ""}`;
+                                                break;
+
+                                            case "Freight":
+                                                Freight = value?.moneyValue?.amount ?? 0;
+                                                break;
+
+                                            case "Tax %":
+                                                TaxPercentage = value?.bigDecimalValue ?? 0;
+                                                break;
+
+                                            case "Profit":
+                                                Profit = `${parseFloat(value?.moneyValue?.amount ?? 0)} ${value?.moneyValue?.currency ?? ""}`;
+                                                break;
+
+                                            case "Landed Price":
+                                                LandedPrice = value?.bigDecimalValue ?? 0;
+                                                break;
+
+                                            case "Discount Percentage":
+                                                DiscountPercentage = value?.bigDecimalValue ?? 0;
+                                                break;
+
+                                            case "Material Code":
+                                                MaterialCode = value?.simpleValue ?? "";
+                                                break;
+
+                                            case "Existing PO number":
+                                                ExistingPoNumber = value?.simpleValue ?? "";
+                                                break;
+
+                                            case "Existing PO/ARC/Contract Value":
+                                                const poValue = value?.supplierValue?.amount ?? 0;
+                                                const poCurrency = value?.supplierValue?.currency ?? "";
+                                                ExistingPoContractValue = `${parseFloat(poValue)} ${poCurrency}`;
+                                                break;
+
+                                            default:
+                                                break;
                                         }
                                     });
+
+                                    // itemsForCB.push({
+                                    //     ProposedVendorCode: Id,
+                                    //     ItemCode: itemId,
+                                    //     round: Round,
+                                    //     Price,
+                                    //     PriceCurrency,
+                                    //     ItemPrice,
+                                    //     ItemPriceCurrency,
+                                    //     UnitOfMeasure,
+                                    //     UnitOfMeasureCode,
+                                    //     DiscountPercentage,
+                                    //     ExtendedPrice,
+                                    //     ExtendedPriceCurrency,
+
+
+                                    //     Freight,
+                                    //     TaxPercentage,
+
+                                    // });
+                                    console.log(itemsForCB);
                                     const numericPrice = parseFloat(ItemPrice.split(" ")[0]);
                                     const UnitPrice = (numericPrice / UnitOfMeasure).toFixed(2);
 
@@ -1371,8 +1531,22 @@ if (isMainThread) {
                                         DiscountPercentage,
                                         BidRank,
                                         TaxPercentage,
-                                        Freight
+                                        Freight,
+
+                                        Savings,
+                                        SavingsPercent,
+                                        MaterialCost,
+                                        LabourCost,
+                                        ProcessingCost,
+                                        PackagingCost,
+                                        MaterialCode,
+                                        Profit,
+                                        LandedPrice,
+                                        ExistingPoNumber,
+                                        ExistingPoContractValue,
+                                        ExistingPoContractCurrency
                                     });
+                                    console.log();
                                 });
                             });
                         });
@@ -1421,207 +1595,293 @@ if (isMainThread) {
                             smVendorID: grouped[vendorID][0].VendorsmVendorID  // or VendorsmVendorID if that’s the actual property
                         }));
 
+                        ////
+
+                        async function InsertDueDeligence(questionnaireArray, questionnairesList) {
+
+                            for (let i = 0; i < questionnaireArray.length; i++) {
+                                const ID = Date.now().toString(); // super simple unique ID
+                                questionnaireArray[i].ID = ID;
+                                const inserted = await INSERT
+                                    .into(NfaVendorDueDeligenceDetails)
+                                    .entries(questionnaireArray[i]);
+                                console.log('Inserted Due deligence', inserted);
+                            }
+                            for (let i = 0; i < questionnairesList.length; i++) {
+                                const ID = Date.now().toString(); // super simple unique ID
+                                questionnairesList[i].ID = ID;
+                                const inserted = await INSERT
+                                    .into(NfaVendorDueDeligenceDetailsGrade)
+                                    .entries(questionnairesList[i]);
+                                console.log('Inserted Due deligence rx6', inserted);
+                            }
+
+
+
+
+                        }
+
                         async function fetchDueDiligenceData(vendorArray) {
                             const results = [];
 
                             for (const vendor of vendorArray) {
-                                const DueDiligenceFirstUrlBody = {
+                                let DueDiligenceFirstUrlBody = {
                                     ...DueDiligenceUrlFirstBase,
                                     url: DueDiligenceFirstUrl
                                         .replace("<vendorId>", vendor.smVendorID)
 
                                 };
 
-                                const result = await NfaAriba.post('/', DueDiligenceFirstUrlBody);
-                                const questionnaireList = result._embedded.questionnaireList;
-                                for (const q of questionnaireList) {
-                                    const title = q.questionnaire.title;
-                                    if (title === "Due Diligence for Hi-Tech computers") {
-                                        console.log(`Found Due Diligence questionnaire for ${vendor.vendorID}`);
-                                        const WorkSpaceID = q.questionnaire.workspaceId;
-                                        const QuestionnaireID = q.questionnaire.questionnaireId;
+                                try {
+                                    const result = await NfaAriba.post('/', DueDiligenceFirstUrlBody);
+                                    const questionnaireList = result?._embedded?.questionnaireList ?? [];
 
-                                        const DueDiligenceUrlBody = {
-                                            ...DueDiligenceUrlBase,
-                                            url: DueDiligenceUrl
-                                                .replace("<vendorId>", vendor.smVendorID)
-                                                .replace("<WorkspaceId>", WorkSpaceID)
-                                                .replace("<QuestinonId>", QuestionnaireID),
-                                        };
+                                    let flag = false;
 
-                                        const result = await NfaAriba.post('/', DueDiligenceUrlBody);
+                                    for (const q of questionnaireList) {
+                                        const title = q?.questionnaire?.docTitle ?? "";
+                                        if (title === "Due Diligence") {
+                                            flag = true;
+                                            console.log(`✅ Found Due Diligence questionnaire for ${vendor?.vendorID}`);
 
-                                        console.log("")
-                                        for (const item of result._embedded.questionAnswerList) {
-                                            let label = item.questionAnswer.questionLabel;
-                                            let value = item.questionAnswer.answer; // Assuming the answer is here                                        
+                                            const WorkSpaceID = q?.questionnaire?.workspaceId;
+                                            const QuestionnaireID = q?.questionnaire?.questionnaireId;
 
-                                            // Example switch-case for assigning values
-                                            switch (label) {
-                                                case "Company Name":
-                                                    CompanyName = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Address":
-                                                    CompanyAddress = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company City":
-                                                    CompanyCity = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company State":
-                                                    CompanyState = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Pincode":
-                                                    CompanyPincode = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Country":
-                                                    CompanyCountry = value;
-                                                    value = '';
-                                                    break;
-                                                case "Class of Company":
-                                                    ClassOfCompany = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Activity":
-                                                    CompanyActivity = value;
-                                                    value = '';
-                                                    break;
-                                                case "NIC Code":
-                                                    NICCode = value;
-                                                    value = '';
-                                                    break;
-                                                case "NIC Code Description":
-                                                    NICCodeDescription = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Status":
-                                                    CompanyStatus = value;
-                                                    value = '';
-                                                    break;
-                                                case "Date of Incorporation":
-                                                    DateOfIncorporation = value;
-                                                    value = '';
-                                                    break;
-                                                case "Age of Company":
-                                                    AgeOfCompany = value;
-                                                    value = '';
-                                                    break;
-                                                case "Listing Status":
-                                                    ListingStatus = value;
-                                                    value = '';
-                                                    break;
-                                                case "Date of Last Balance Sheet":
-                                                    DateOfLastBalanceSheet = value;
-                                                    value = '';
-                                                    break;
-                                                case "Date of Last Annual General Meeting":
-                                                    DateOfLastAGM = value;
-                                                    value = '';
-                                                    break;
-                                                case "Authorized Capital":
-                                                    AuthorizedCapital = value;
-                                                    value = '';
-                                                    break;
-                                                case "Paid Up Capital":
-                                                    PaidUpCapital = value;
-                                                    value = '';
-                                                    break;
-                                                case "Management Details":
-                                                    ManagementDetails = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Number":
-                                                    CompanyNumber = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Email":
-                                                    CompanyEmail = value;
-                                                    value = '';
-                                                    break;
-                                                case "Company Website":
-                                                    CompanyWebsite = value;
-                                                    value = '';
-                                                    break;
-                                                case "Comments":
-                                                    Comments = value;
-                                                    value = '';
-                                                    break;
-                                                default:
-                                                    otherField = value;
-                                                    value = '';
-                                                    break;
+                                            if (!WorkSpaceID || !QuestionnaireID) {
+                                                console.warn(`⚠️ Missing Workspace or Questionnaire ID for vendor ${vendor?.vendorID}`);
+                                                continue;
                                             }
 
+                                            const DueDiligenceUrlBody = {
+                                                ...DueDiligenceUrlBase,
+                                                url: (DueDiligenceUrl ?? "")
+                                                    .replace("<vendorId>", vendor?.smVendorID ?? "")
+                                                    .replace("<WorkspaceId>", WorkSpaceID)
+                                                    .replace("<QuestinonId>", QuestionnaireID),
+                                            };
 
+                                            let dueDiligenceResult;
+                                            try {
+                                                dueDiligenceResult = await NfaAriba.post('/', DueDiligenceUrlBody);
+                                            } catch (err) {
+                                                console.error(`❌ Failed to fetch Due Diligence data for ${vendor?.vendorID}:`, err.message);
+                                                continue;
+                                            }
+
+                                            const questionAnswers = dueDiligenceResult?._embedded?.questionAnswerList ?? [];
+
+                                            const companyData = {
+                                                // Basic info
+                                                NfaNumber: DocId ?? '',
+                                                ProposedVendorCode: vendor?.vendorID ?? '',
+                                                round: roundMap?.[vendor?.vendorID] ?? '',
+                                                CompanyName: '',
+                                                CompanyAddress: '',
+                                                CompanyCity: '',
+                                                CompanyState: '',
+                                                CompanyPincode: '',
+                                                CompanyCountry: '',
+                                                ClassOfCompany: '',
+                                                CompanyActivity: '',
+                                                NICCode: '',
+                                                NICCodeDescription: '',
+                                                CompanyStatus: '',
+                                                DateOfIncorporation: '',
+                                                AgeOfCompany: '',
+                                                ListingStatus: '',
+                                                DateOfLastBalanceSheet: '',
+                                                DateofLastAnnualGeneralMeeting: '',
+                                                AuthorizedCapital: '',
+                                                PaidUpCapital: '',
+                                                ManagementDetails: '',
+                                                CompanyNumber: '',
+                                                CompanyEmail: '',
+                                                CompanyWebsite: '',
+                                                Comments: '',
+
+                                                // Risk
+                                                RiskScore: '',
+                                                RiskGrade: '',
+                                                Description: '',
+                                                otherField: ''
+                                            };
+
+                                            const questionnairesList = [];
+
+                                            for (const item of questionAnswers) {
+                                                const label = item?.questionAnswer?.questionLabel ?? "";
+                                                const value = item?.questionAnswer?.answer ?? "";
+
+                                                switch (label) {
+                                                    case "Company Name": companyData.CompanyName = value; break;
+                                                    case "Company Address": companyData.CompanyAddress = value; break;
+                                                    case "Company City": companyData.CompanyCity = value; break;
+                                                    case "Company State": companyData.CompanyState = value; break;
+                                                    case "Company Pincode": companyData.CompanyPincode = value; break;
+                                                    case "Company Country": companyData.CompanyCountry = value; break;
+                                                    case "Class of Company": companyData.ClassOfCompany = value; break;
+                                                    case "Company Activity": companyData.CompanyActivity = value; break;
+                                                    case "NIC Code": companyData.NICCode = value; break;
+                                                    case "NIC Code Description": companyData.NICCodeDescription = value; break;
+                                                    case "Company Status": companyData.CompanyStatus = value; break;
+                                                    case "Date of Incorporation": companyData.DateOfIncorporation = returndatenew?.(value) ?? ''; break;
+                                                    case "Age of Company": companyData.AgeOfCompany = value; break;
+                                                    case "Listing Status": companyData.ListingStatus = value; break;
+                                                    case "Date of Last Balance Sheet": companyData.DateOfLastBalanceSheet = returndatenew?.(value) ?? ''; break;
+                                                    case "Date of Last Annual General Meeting": companyData.DateofLastAnnualGeneralMeeting = returndatenew?.(value) ?? ''; break;
+                                                    case "Authorized Capital": companyData.AuthorizedCapital = value; break;
+                                                    case "Paid Up Capital": companyData.PaidUpCapital = value; break;
+                                                    case "Management Details": companyData.ManagementDetails = value; break;
+                                                    case "Company Number": companyData.CompanyNumber = value; break;
+                                                    case "Company Email": companyData.CompanyEmail = value; break;
+                                                    case "Company Website": companyData.CompanyWebsite = value; break;
+                                                    case "Comments": companyData.Comments = value; break;
+                                                    case "Risk Score": companyData.RiskScore = value; break;
+                                                    case "Risk Grade": companyData.RiskGrade = value; break;
+                                                    case "Description": companyData.Description = value; break;
+
+                                                    // Handle grouped score data
+                                                    case "Min Score":
+                                                    case "Max Score":
+                                                    case "Category":
+                                                    case "Grade Description": {
+                                                        let lastObj = questionnairesList[questionnairesList.length - 1];
+                                                        if (!lastObj || (lastObj.MinScore && lastObj.MaxScore && lastObj.Category && lastObj.GradeDescription)) {
+                                                            lastObj = {
+                                                                round: roundMap?.[vendor?.vendorID] ?? '',
+                                                                NfaNumber: DocId ?? '',
+                                                                ProposedVendorCode: vendor?.vendorID ?? '',
+                                                                MinScore: '',
+                                                                MaxScore: '',
+                                                                Category: '',
+                                                                GradeDescription: ''
+                                                            };
+                                                            questionnairesList.push(lastObj);
+                                                        }
+
+                                                        if (label === "Min Score") lastObj.MinScore = value;
+                                                        if (label === "Max Score") lastObj.MaxScore = value;
+                                                        if (label === "Category") lastObj.Category = value;
+                                                        if (label === "Grade Description") lastObj.GradeDescription = value;
+                                                        break;
+                                                    }
+
+                                                    default:
+                                                        companyData.otherField = value;
+                                                        break;
+                                                }
+                                            }
+
+                                            console.log('✅ Company Data:', companyData);
+                                            questionnaireArray.push(companyData);
+
+                                            console.log('📋 All Questionnaires:', questionnairesList);
+
+                                            try {
+                                                await InsertDueDeligence(questionnaireArray, questionnairesList);
+                                            } catch (err) {
+                                                console.error(`❌ Error inserting Due Diligence data for ${vendor?.vendorID}:`, err.message);
+                                            }
+
+                                            break;
+                                        }
+                                    }
+
+                                    // If "Due Diligence" questionnaire not found
+                                    if (!flag) {
+                                        console.warn(`⚠️ No Due Diligence questionnaire found for ${vendor?.vendorID}, falling back to Excel data.`);
+
+                                        function parseSheet(sheet) {
+                                            const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+                                            const result = { "Questionnaire details": [], "Grade RX": [] };
+
+                                            let currentGroup = null;
+                                            let currentObj = {};
+
+                                            for (const row of data) {
+                                                if (!row?.length) continue;
+
+                                                const key = row[0]?.toString().trim();
+                                                const value = row[1]?.toString().trim();
+                                                if (!key) continue;
+
+                                                if (key === "Questionnaire details" || key.startsWith("Grade RX")) {
+                                                    if (Object.keys(currentObj).length > 0) {
+                                                        if (currentGroup === "Questionnaire details") result["Questionnaire details"].push(currentObj);
+                                                        else if (currentGroup?.startsWith("Grade RX")) result["Grade RX"].push(currentObj);
+                                                        currentObj = {};
+                                                    }
+                                                    currentGroup = key;
+                                                    continue;
+                                                }
+
+                                                currentObj[key] = value;
+                                            }
+
+                                            // Push last group
+                                            if (Object.keys(currentObj).length > 0) {
+                                                if (currentGroup === "Questionnaire details") result["Questionnaire details"].push(currentObj);
+                                                else if (currentGroup?.startsWith("Grade RX")) result["Grade RX"].push(currentObj);
+                                            }
+
+                                            return result;
                                         }
 
-                                        questionnaireArray.push({
-                                            CompanyName: CompanyName,
-                                            CompanyAddress: CompanyAddress,
-                                            CompanyCity: CompanyCity,
-                                            CompanyState: CompanyState,
-                                            CompanyPincode: CompanyPincode,
-                                            CompanyCountry: CompanyCountry,
-                                            ClassOfCompany: ClassOfCompany,
-                                            CompanyActivity: CompanyActivity,
-                                            NICCode: NICCode,
-                                            NICCodeDescription: NICCodeDescription,
-                                            CompanyStatus: CompanyStatus,
-                                            DateOfIncorporation: DateOfIncorporation,
-                                            AgeOfCompany: AgeOfCompany,
-                                            ListingStatus: ListingStatus,
-                                            DateOfLastBalanceSheet: DateOfLastBalanceSheet,
-                                            DateOfLastAGM: DateOfLastAGM,
-                                            AuthorizedCapital: AuthorizedCapital,
-                                            PaidUpCapital: PaidUpCapital,
-                                            ManagementDetails: ManagementDetails,
-                                            CompanyNumber: CompanyNumber,
-                                            CompanyEmail: CompanyEmail,
-                                            CompanyWebsite: CompanyWebsite,
-                                            Comments: Comments
-                                        });
+                                        try {
+                                            const filePath = path.join(__dirname, '../attachments/Due Deligence Test.xlsx');
 
-                                        console.log();
+                                            if (!fs.existsSync(filePath)) {
+                                                console.error('❌ File "Due Deligence Test.xlsx" not found in attachments folder.');
+                                                return;
+                                            }
 
+                                            const fileBuffer = fs.readFileSync(filePath);
+                                            const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+                                            const sheetName = workbook?.SheetNames?.[0];
+                                            const sheet = workbook?.Sheets?.[sheetName];
 
+                                            if (!sheet) {
+                                                console.error('❌ No sheet found in Excel workbook.');
+                                                return;
+                                            }
 
-                                        // Perform your custom logic here
-                                    } else {
-                                        // Skip this questionnaire and continue with the next one
-                                        continue;
+                                            const exceldata = parseSheet(sheet);
+
+                                            // Attach round/vendor info safely
+                                            for (const v of exceldata["Questionnaire details"] ?? []) {
+                                                v.round = roundMap?.[vendor?.vendorID] ?? '';
+                                                v.NfaNumber = DocId ?? '';
+                                                v.ProposedVendorCode = vendor?.vendorID ?? '';
+                                            }
+
+                                            for (const v of exceldata["Grade RX"] ?? []) {
+                                                v.round = roundMap?.[vendor?.vendorID] ?? '';
+                                                v.NfaNumber = DocId ?? '';
+                                                v.ProposedVendorCode = vendor?.vendorID ?? '';
+                                            }
+
+                                            await InsertDueDeligence(exceldata["Questionnaire details"], exceldata["Grade RX"]);
+                                            console.log('✅ Excel fallback data processed successfully:', exceldata);
+
+                                        } catch (error) {
+                                            console.error('❌ Error reading Excel:', error);
+                                        }
                                     }
-                                    // You can continue your logic here with the title
+
+                                } catch (mainErr) {
+                                    console.error('❌ Fatal error in Due Diligence processing:', mainErr.message);
                                 }
+
                             }
 
-                            // return questionnaireArray;
+
                         }
-                        // async function fetchDueDiligenceData(vendorArray) {
-                        //     const results = [];
-
-                        //     for (const vendor of vendorArray) {
-                        //         const DueDiligenceUrlBody = {
-                        //             ...DueDiligenceUrlBase,
-                        //             url: DueDiligenceUrl
-                        //                 .replace("<vendorId>", vendor.smVendorID)
-                        //                 .replace("<ProjectId>", ProjectID)
-                        //                 .replace("<DocId>", DocId),
-                        //         };
-
-                        //         const result = await NfaAriba.post('/', DueDiligenceUrlBody);
-                        //         results.push(result);
-                        //     }
-
-                        //     return results;
-                        // }
 
                         // Usage
                         const data = await fetchDueDiligenceData(vendorArray);
                         console.log(data);
+
+                        ////
 
 
 
@@ -1681,6 +1941,8 @@ if (isMainThread) {
                                 PackagingForwardingValue: doc?.PackagingForwardingValue || null,
                                 FormattedLogisticsAmount: doc?.FormattedLogisticsAmount || null,
                                 InsuranceValue: doc?.InsuranceValue || null,
+                                HrClearanceCertificates: doc?.HrClearanceCertificates || null,
+                                JobClearanceCertificates: doc?.JobClearanceCertificates || null,
                                 PenaltyQualityValue: doc?.PenaltyQualityValue || null,
                                 PenaltyCriteriaValue: doc?.PenaltyCriteriaValue || null,
                                 DeliveryLeadTimeValue: doc?.DeliveryLeadTimeValue || null,
@@ -1784,34 +2046,56 @@ if (isMainThread) {
                                     ApprovingPlantItem = array[i].terms[0].value.simpleValue;
                                 }
                                 var ItemQuantity, ItemPrice, ItemImproviseAmount;
-                                if (array[i].commodity) {
-                                    for (let j = 0; j < array[i].terms.length; j++) {
-                                        if (array[i].terms[j].title === 'Quantity') {
-                                            ItemQuantity = array[i].terms[j].value.quantityValue.amount + ' ' + array[i].terms[j].value.quantityValue.unitOfMeasureCode;
-                                            // quantity_int = ItemResp.payload[i].terms[j].value.quantityValue.amount;
+                                if (array?.[i]?.commodity) {
+                                    const terms = array[i]?.terms ?? [];
+                                    let ItemQuantity = "";
+                                    let ItemPrice = "";
+                                    let ItemImproviseAmount = "";
+
+                                    for (let j = 0; j < terms.length; j++) {
+                                        const term = terms[j];
+                                        const title = term?.title ?? "";
+
+                                        if (title === 'Quantity') {
+                                            const amount = term?.value?.quantityValue?.amount ?? 0;
+                                            const unitCode = term?.value?.quantityValue?.unitOfMeasureCode ?? "";
+                                            ItemQuantity = `${amount} ${unitCode}`.trim();
                                         }
-                                        if (array[i].terms[j].title === 'Price') {
-                                            ItemPrice = array[i].terms[j].historyValue.moneyValue.amount + ' ' + array[i].terms[j].historyValue.moneyValue.currency;
-                                            // Price_int = ItemResp.payload[i].terms[j].historyValue.moneyValue.amount;
+
+                                        if (title === 'Price') {
+                                            const amount = term?.historyValue?.moneyValue?.amount ?? 0;
+                                            const currency = term?.historyValue?.moneyValue?.currency ?? "";
+                                            ItemPrice = `${amount} ${currency}`.trim();
                                         }
-                                        if (array[i].terms[j].title === 'Unit Cost') {
-                                            ItemImproviseAmount = array[i].terms[j].itemBiddingRules.revisedBidRule.absoluteImprovement;
+
+                                        if (title === 'Unit Cost') {
+                                            ItemImproviseAmount = term?.itemBiddingRules?.revisedBidRule?.absoluteImprovement ?? "";
                                         }
                                     }
-                                    if (ItemQuantity === 0 || ItemPrice === 0) {
+
+                                    // Validate values before pushing
+                                    const numericQty = parseFloat(ItemQuantity.split(" ")[0]) || 0;
+                                    const numericPrice = parseFloat(ItemPrice.split(" ")[0]) || 0;
+
+                                    if (numericQty === 0 || numericPrice === 0) {
+                                        // Skip incomplete or invalid entries
                                         continue;
                                     }
+
                                     ItemsPrice.push({
                                         quantity: ItemQuantity,
                                         Price: ItemPrice,
                                         improvise_amount: ItemImproviseAmount,
-                                        ItemId: array[i].itemId,
-                                        ItemName: array[i].title
-                                    })
+                                        ItemId: array?.[i]?.itemId ?? "",
+                                        ItemName: array?.[i]?.title ?? ""
+                                    });
+
+                                    // Reset values (for clarity, optional)
                                     ItemQuantity = "";
                                     ItemPrice = "";
                                     ItemImproviseAmount = "";
                                 }
+
 
 
                             }
@@ -1836,24 +2120,40 @@ if (isMainThread) {
                                 itemname: matchedItem ? matchedItem.title : null
                             };
                         });
-                        const roundsSummary = RoundsData.payload.map(round => ({
-                            roundNumber: round.roundNumber,
-                            suppliersCount: round.suppliers.length,
-                            suppliers: round.suppliers,
-                            biddingStartDate: round.biddingStartDate,
-                            biddingEndDate: round.biddingEndDate
-                        }));
+                        // Initialize values with safe defaults
+                        let roundsSummary = [];
+                        let lastRound = null;
+                        let diffDays = null;
+                        let RfpPublishDateFinal = null;
 
-                        //debugger
-                        const lastRound = roundsSummary[roundsSummary.length - 1];
-                        const lastRoundEndDate = new Date(lastRound.biddingEndDate);
+                        if (Array.isArray(RoundsData?.payload) && RoundsData.payload.length > 0) {
+                            roundsSummary = RoundsData.payload.map(round => ({
+                                roundNumber: round?.roundNumber ?? "",
+                                suppliersCount: Array.isArray(round?.suppliers) ? round.suppliers.length : 0,
+                                suppliers: Array.isArray(round?.suppliers) ? round.suppliers : [],
+                                biddingStartDate: round?.biddingStartDate ?? "",
+                                biddingEndDate: round?.biddingEndDate ?? ""
+                            }));
 
-                        // Calculate difference in milliseconds
-                        const diffMs = lastRoundEndDate - new Date(DocumentUrlCreateDate);
+                            lastRound = roundsSummary[roundsSummary.length - 1];
 
-                        // Full days gap
-                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                        const RfpPublishDateFinal = returndate(RfpPublishDate)
+                            const lastRoundEndDate = new Date(lastRound?.biddingEndDate);
+                            const documentCreateDate = new Date(DocumentUrlCreateDate);
+
+                            if (!isNaN(lastRoundEndDate) && !isNaN(documentCreateDate)) {
+                                diffDays = Math.floor((lastRoundEndDate - documentCreateDate) / (1000 * 60 * 60 * 24));
+                            }
+                        }
+
+                        // Safe call to returndate function
+                        if (typeof returndate === "function") {
+                            RfpPublishDateFinal = returndate(RfpPublishDate);
+                        }
+
+                        // Now you can safely use these variables outside the if block
+                        console.log({ roundsSummary, lastRound, diffDays, RfpPublishDateFinal });
+
+
                         ///////////////GENERAL DETAILS///////////////////////
                         GeneralDetailsArr.push({
                             NfaNumber: String(DocId).trim(),
@@ -1873,7 +2173,9 @@ if (isMainThread) {
                             TaskId: TaskID,
                             SBUUnitLocation: SbuUnitLocation,
                             maxRound: lastRound.roundNumber,
-                            CreatedBy: req.user.id === 'anonymous' ? "prem.k@peolsolutions.com" : req.user.id
+                            CreatedBy: req.user.id === 'anonymous' ? "prem.k@peolsolutions.com" : req.user.id,
+
+                            ...extraFields
                         });
 
                         console.log("GeneralDetailsArr", GeneralDetailsArr);
@@ -1956,6 +2258,8 @@ if (isMainThread) {
                                         DeviationListValue: row.DeviationListValue,
                                         FormattedLogisticsAmount: row.FormattedLogisticsAmount,
                                         InsuranceValue: row.InsuranceValue,
+                                        HrClearanceCertificates: row.HrClearanceCertificates,
+                                        JobClearanceCertificates: row.JobClearanceCertificates,
                                         PenaltyQualityValue: row.PenaltyQualityValue,
                                         PenaltyCriteriaValue: row.PenaltyCriteriaValue,
                                         LiquidatedDamagesValue: row.LiquidatedDamagesValue,
@@ -1985,7 +2289,19 @@ if (isMainThread) {
                                     BidRank: row.BidRank,
                                     DiscountPercentage: row.DiscountPercentage,
                                     TaxPercentage: row.TaxPercentage,
-                                    Freight: row.Freight
+                                    Freight: row.Freight,
+                                    Savings: row.Savings,
+                                    SavingsPercent: row.SavingsPercent,
+                                    MaterialCost: row.MaterialCost,
+                                    LabourCost: row.LabourCost,
+                                    ProcessingCost: row.ProcessingCost,
+                                    PackagingCost: row.PackagingCost,
+                                    MaterialCode: row.MaterialCode,
+                                    Profit: row.Profit,
+                                    LandedPrice: row.LandedPrice,
+                                    ExistingPoNumber: row.ExistingPoNumber,
+                                    ExistingPoContractValue: row.ExistingPoContractValue
+
                                 });
                             }
 
@@ -2034,10 +2350,18 @@ if (isMainThread) {
                                     });
                                 });
 
-                                const spendAmount = parseFloat(vendor.FormattedVendorsSpendAmount.replace(/[^0-9.]/g, '')) || 0;
-                                const turnoverAmount = parseFloat(vendor.FormattedVendorsTurnOverAmount.replace(/[^0-9.]/g, '')) || 0;
+                                const spendAmount = parseFloat((vendor.FormattedVendorsSpendAmount || '').replace(/[^0-9.]/g, '')) || 0;
+                                const turnoverAmount = parseFloat((vendor.FormattedVendorsTurnOverAmount || '').replace(/[^0-9.]/g, '')) || 0;
 
-                                const isVendorDependency = (spendAmount / turnoverAmount) * 100;
+
+                                if (turnoverAmount > 0 && !isNaN(turnoverAmount)) {
+                                    isVendorDependency = (spendAmount / turnoverAmount) * 100;
+                                } else {
+                                    // Optionally log or handle invalid turnover
+                                    console.warn(`Invalid turnover amount for vendor: ${turnoverAmount}`);
+                                }
+                                console.log("isVendorDependency", isVendorDependency);
+
                                 // Find split entry for this vendor
                                 const splitEntry = vendorSplitArray.find(v => v.vendorId === vendor.SupplierId);
                                 if (splitEntry) {
@@ -2089,12 +2413,12 @@ if (isMainThread) {
                                     TermsOfPaymentMilestoneOnwhichPaymentWillBemade: vendor.TermsOfPaymentValue,
                                     PackingForwarding: vendor.PackagingForwardingValue,
                                     Insurance: vendor.InsuranceValue,
+                                    HrClearanceCertificates: vendor.HrClearanceCertificates,
+                                    JobClearanceCertificates: vendor.JobClearanceCertificates,
                                     LiquidatedDamages: vendor.LiquidatedDamagesValue,
                                     LiquidatedDamagesClause: vendor.LiquidatedDamagesClValue,
                                     PbgAndSd: vendor.PBGAndSDValue,
                                     PbgAndSdClause: vendor.PBGAndSDClValue,
-                                    JobClearanceCertificates: "",
-                                    HrClearanceCertificates: "",
                                     OtherKeyTerms: vendor.OtherKeyTermsValue,
                                     RationalForAwardingContractToDependentPartner: vendor.RationalToDependentPartnerValue,
                                     DeliveryLeadTime: vendor.DeliveryLeadTimeValue,
@@ -2152,6 +2476,8 @@ if (isMainThread) {
                                 TermsOfPaymentMilestoneOnwhichPaymentWillBemade: parent.TermsOfPaymentMilestoneOnwhichPaymentWillBemade,
                                 PackingForwarding: parent.PackingForwarding,
                                 Insurance: parent.Insurance,
+                                HrClearanceCertificates: parent.HrClearanceCertificates,
+                                JobClearanceCertificates: parent.JobClearanceCertificates,
                                 LiquidatedDamages: parent.LiquidatedDamages,
                                 LiquidatedDamagesClause: parent.LiquidatedDamagesClause,
                                 PbgAndSd: parent.PbgAndSd,
@@ -2176,26 +2502,167 @@ if (isMainThread) {
                                     Quantity: item.UnitOfMeasure,
                                     UnitPrice: item.UnitPrice,
                                     DiscountPercentage: item.DiscountPercentage,
-                                    IndianTaxPER: item.TaxPercentage
+                                    IndianTaxPER: item.TaxPercentage,
+                                    Savings: item.Savings,
+                                    SavingsPercent: item.SavingsPercent,
+                                    MaterialCost: item.MaterialCost,
+                                    LabourCost: item.LabourCost,
+                                    ProcessingCost: item.ProcessingCost,
+                                    PackagingCost: item.PackagingCost,
+                                    MaterialCode: item.MaterialCode,
+                                    Profit: item.Profit,
+                                    LandedPrice: item.LandedPrice,
+                                    ExistingPoNumber: item.ExistingPoNumber,
+                                    ExistingPoContractValue: item.ExistingPoContractValue,
                                 }))
                                 await INSERT.into(NfaVendorItemsDetails).entries(childEntries);
                             }
                         }
                         //debugger
-                        WorkflowHistory.push({
-                            NfaNumber: DocId,
-                            level: 1,
-                            EmployeeID: "prem.k@peolsolutions.com",
-                            EmployeeName: "Prem Krishna",
-                        });
 
-                        // Level 2 entry
-                        WorkflowHistory.push({
-                            NfaNumber: DocId,
-                            level: 2,
-                            EmployeeID: "prem.k@peolsolutions.com",
-                            EmployeeName: "Prem Krishna",
-                        });
+                        const approverRulesData = await SELECT.from(RulesApprovers);
+
+                        // Filter for hrData, jobData, and defaultData
+                        const hrData = approverRulesData.filter(item => item.ruleName === 'Hr');
+                        const jobData = approverRulesData.filter(item => item.ruleName === 'Job');
+                        const defaultDataLevel1 = approverRulesData.filter(item => item.ruleName === 'default' && item.level === 1);
+                        const defaultDataLevel2 = approverRulesData.filter(item => item.ruleName === 'default' && item.level === 2);
+                        // Initialize sets to track EmployeeID per level
+                        const level1EmployeeIDs = new Set();
+                        const level2EmployeeIDs = new Set();
+
+                        if (isHr && isJob) {
+                            // Both HR and Job are present
+                            if (hrData.length > 0 && jobData.length > 0 && defaultDataLevel1.length > 0 && defaultDataLevel2.length > 0) {
+                                // Level 1: HR Data
+                                hrData.forEach(item => {
+                                    if (!level1EmployeeIDs.has(item.EmployeeID)) {
+                                        level1EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 1
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 1,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+
+                                // Level 1: Job Data
+                                jobData.forEach(item => {
+                                    if (!level1EmployeeIDs.has(item.EmployeeID)) {
+                                        level1EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 1
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 1,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+
+                                // Level 2: Default Data
+                                defaultDataLevel2.forEach(item => {
+                                    if (!level2EmployeeIDs.has(item.EmployeeID)) {
+                                        level2EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 2
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 2,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+                            }
+                        } else if (isHr) {
+                            // Only HR is present
+                            if (hrData.length > 0 && defaultDataLevel1.length > 0 && defaultDataLevel2.length > 0) {
+                                // Level 1: HR Data
+                                hrData.forEach(item => {
+                                    if (!level1EmployeeIDs.has(item.EmployeeID)) {
+                                        level1EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 1
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 1,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+
+                                // Level 2: Default Data
+                                defaultDataLevel2.forEach(item => {
+                                    if (!level2EmployeeIDs.has(item.EmployeeID)) {
+                                        level2EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 2
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 2,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+                            }
+                        } else if (isJob) {
+                            // Only Job is present
+                            if (jobData.length > 0 && defaultDataLevel1.length > 0 && defaultDataLevel2.length > 0) {
+                                // Level 1: Job Data
+                                jobData.forEach(item => {
+                                    if (!level1EmployeeIDs.has(item.EmployeeID)) {
+                                        level1EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 1
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 1,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+
+                                // Level 2: Default Data
+                                defaultDataLevel2.forEach(item => {
+                                    if (!level2EmployeeIDs.has(item.EmployeeID)) {
+                                        level2EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 2
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 2,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+                            }
+                        } else {
+                            // Neither HR nor Job is present, use default data for both levels
+                            if (defaultDataLevel1.length > 0 && defaultDataLevel2.length > 0) {
+                                // Level 1: Default Data
+                                defaultDataLevel1.forEach(item => {
+                                    if (!level1EmployeeIDs.has(item.EmployeeID)) {
+                                        level1EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 1
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 1,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+
+                                // Level 2: Default Data
+                                defaultDataLevel2.forEach(item => {
+                                    if (!level2EmployeeIDs.has(item.EmployeeID)) {
+                                        level2EmployeeIDs.add(item.EmployeeID); // Mark this EmployeeID as added for level 2
+                                        WorkflowHistory.push({
+                                            NfaNumber: DocId,
+                                            level: 2,
+                                            EmployeeID: item.EmployeeID,
+                                            EmployeeName: item.EmployeeName,
+                                        });
+                                    }
+                                });
+                            }
+                        }
+
+                        console.log(WorkflowHistory); // Verify the result
                         // Insert all entries at once
                         await INSERT.into(NfaWorkflowHistory).entries(WorkflowHistory);
                         console.log("Inserted Into WorkFlow History")
@@ -2329,7 +2796,52 @@ if (isMainThread) {
             catch (e) {
                 console.log(e)
             }
-        })
+        });
+
+        this.on('discardNfaData', async (req) => {
+            try {
+                let rFP = req.data.NfaNumber;
+
+                console.log("Discard NFA Data for:", rFP);
+                const nfaDetails = await cds.read('NfaDetails').where({ RfpNumber: rFP });
+                console.log(nfaDetails[0].NfaNumber);
+                const NfaNumber = nfaDetails[0].NfaNumber;
+
+
+                // --- Delete child entities first ---
+
+                // Delete NfaWorkflowHistory
+                await DELETE.from(NfaWorkflowHistory).where({ NfaNumber });
+                console.log("NfaWorkflowHistory deleted for", NfaNumber);
+
+                // Delete NfaVendorItemsDetails
+                await DELETE.from(NfaVendorItemsDetails).where({ NfaNumber });
+                console.log("NfaVendorItemsDetails deleted for", NfaNumber);
+
+                // Delete NfaVendorDueDeligenceDetails
+                await DELETE.from(NfaVendorDueDeligenceDetails).where({ NfaNumber });
+                console.log("NfaVendorDueDeligenceDetails deleted for", NfaNumber);
+
+                // Delete NfaVendorDueDeligenceDetailsGrade
+                await DELETE.from(NfaVendorDueDeligenceDetailsGrade).where({ NfaNumber });
+                console.log("NfaVendorDueDeligenceDetailsGrade deleted for", NfaNumber);
+
+                // Delete NfaVendorData
+                await DELETE.from(NfaVendorData).where({ NfaNumber });
+                console.log("NfaVendorData deleted for", NfaNumber);
+
+                // --- Finally delete NfaDetails ---
+                await DELETE.from(NfaDetails).where({ NfaNumber });
+                console.log("NfaDetails deleted for", NfaNumber);
+
+                return { message: `All NFA data for NfaNumber=${NfaNumber} discarded successfully.` };
+            } catch (error) {
+                console.error("discardNfaData Error:", error);
+                return { error: error.message };
+            }
+        });
+
+
 
     });
 }

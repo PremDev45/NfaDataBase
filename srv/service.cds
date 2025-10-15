@@ -2,40 +2,48 @@ using db from '../db/schema';
 
 service NfaForm {
     @odata.draft.enabled
-    entity NfaDetails            as projection on db.NfaDetails
-                                    where
-                                        CreatedBy = 'prem.k@peolsolutions.com';
-    entity NfaEventHistory       as projection on db.NfaEventHistory;
-    entity NfaVendorData         as projection on db.NfaVendorData;
-    entity NfaVendorItemsDetails as projection on db.NfaVendorItemsDetails;
-    entity NfaAttachments        as projection on db.NfaAttachments;
-    entity NfaCommentsHistory    as projection on db.NfaCommentsHistory;
-    entity NfaWorkflowHistory    as projection on db.NfaWorkflowHistory;
+    entity NfaDetails                        as projection on db.NfaDetails
+                                                where
+                                                    CreatedBy = 'prem.k@peolsolutions.com';
+
+    entity NfaEventHistory                   as projection on db.NfaEventHistory;
+    entity NfaVendorData                     as projection on db.NfaVendorData;
+    entity NfaVendorItemsDetails             as projection on db.NfaVendorItemsDetails;
+    entity NfaVendorDueDeligenceDetails      as projection on db.NfaVendorDueDeligenceDetails;
+    entity NfaVendorDueDeligenceDetailsGrade as projection on db.NfaVendorDueDeligenceDetailsGrade;
+    entity NfaAttachments                    as projection on db.NfaAttachments;
+    entity NfaCommentsHistory                as projection on db.NfaCommentsHistory;
+    entity NfaWorkflowHistory                as projection on db.NfaWorkflowHistory;
+
     @odata.draft.enabled
-    entity Rules                 as projection on db.Rules;
-    entity Approvers             as projection on db.Approvers;
+    entity Rules                             as projection on db.Rules;
+
+    entity Approvers                         as projection on db.Approvers;
     function getDataForUserAndProject(user: String, project: String) returns String;
-    function getHrJob(NfaNumber:String) returns String;
+    function getHrJob(NfaNumber: String)                             returns String;
+    function discardNfaData(NfaNumber: String)                       returns String;
 }
 
 service NfaApproval {
-    entity NfaDetails            as projection on db.NfaDetails
-                                    where
-                                        Status = 'Pending For Approval'
-                                        and exists(
-                                            select from db.NfaWorkflowHistory
-                                            where
-                                                    NfaWorkflowHistory.NfaNumber  = NfaDetails.NfaNumber
-                                                and NfaWorkflowHistory.Status     = 'Pending'
-                                                and NfaWorkflowHistory.EmployeeID = 'prem.k@peolsolutions.com'
+    entity NfaDetails                        as projection on db.NfaDetails
+                                                where
+                                                    Status = 'Pending For Approval'
+                                                    and exists(
+                                                        select from db.NfaWorkflowHistory
+                                                        where
+                                                                NfaWorkflowHistory.NfaNumber  = NfaDetails.NfaNumber
+                                                            and NfaWorkflowHistory.Status     = 'Pending'
+                                                            and NfaWorkflowHistory.EmployeeID = 'prem.k@peolsolutions.com'
 
-                                        );
+                                                    );
 
-    entity NfaEventHistory       as projection on db.NfaEventHistory;
-    entity NfaVendorData         as projection on db.NfaVendorData;
-    entity NfaVendorItemsDetails as projection on db.NfaVendorItemsDetails;
-    entity NfaAttachments        as projection on db.NfaAttachments;
-    entity NfaCommentsHistory    as projection on db.NfaCommentsHistory;
-    entity NfaWorkflowHistory    as projection on db.NfaWorkflowHistory;
+    entity NfaEventHistory                   as projection on db.NfaEventHistory;
+    entity NfaVendorData                     as projection on db.NfaVendorData;
+    entity NfaVendorDueDeligenceDetails      as projection on db.NfaVendorDueDeligenceDetails;
+    entity NfaVendorDueDeligenceDetailsGrade as projection on db.NfaVendorDueDeligenceDetailsGrade;
+    entity NfaVendorItemsDetails             as projection on db.NfaVendorItemsDetails;
+    entity NfaAttachments                    as projection on db.NfaAttachments;
+    entity NfaCommentsHistory                as projection on db.NfaCommentsHistory;
+    entity NfaWorkflowHistory                as projection on db.NfaWorkflowHistory;
 
 }
