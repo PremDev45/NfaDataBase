@@ -141,7 +141,7 @@ if (isMainThread) {
 
 
         this.on('getDataForUserAndProject', async (req) => {
-            //debugger
+            debugger
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
             /////*****************LET*****************/////
@@ -2795,6 +2795,7 @@ if (isMainThread) {
             }
             catch (e) {
                 console.log(e)
+                
             }
         });
 

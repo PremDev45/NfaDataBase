@@ -37,29 +37,53 @@ sap.ui.define([
                 that.getView().getContent()[0].mAggregations.content[0].setTitle('Oops! Something went wrong');
                 that.getView().getContent()[0].mAggregations.content[0].setDescription(oContext.value);
             }
-            if (oContext.value.substring(0, 3) == 'Doc') {
-                try {
-                    var href_For_Product_display = (sap.ushell && sap.ushell.Container && await sap.ushell.Container.getServiceAsync("Navigation")) || "";
-                    if (href_For_Product_display != "") {
-                        await href_For_Product_display.navigate({
-                            target: {
-                                semanticObject: "nfaformsem",
-                                action: "display"
-                            },
-                            params: {
-                                "NfaNumber": oContext.value,
-                                "IsActiveEntity": true
-                            }
-                        })
-                    } else {
+
+            if (oContext) {
+                if (oContext.value.substring(0, 3) == 'Doc') {
+                    try {
+                        var href_For_Product_display = (sap.ushell && sap.ushell.Container && await sap.ushell.Container.getServiceAsync("Navigation")) || "";
+                        if (href_For_Product_display != "") {
+                            await href_For_Product_display.navigate({
+                                target: {
+                                    semanticObject: "nfaformsem",
+                                    action: "display"
+                                },
+                                params: {
+                                    "NfaNumber": oContext.value,
+                                    "IsActiveEntity": true
+                                }
+                            })
+                        } else {
+                            loadErrPage(this);
+                        }
+                    } catch (error) {
+                        debugger
                         loadErrPage(this);
                     }
-                } catch (error) {
-                    debugger
-                    loadErrPage(this);
                 }
-            } else {
-                loadErrPage(this);
+
+            }
+            else {
+                // loadErrPage(this);
+                var oErrorDialog = new sap.m.Dialog({
+                    title: "Error",
+                    type: "Message",
+                    state: "Error",
+                    content: new sap.m.Text({ text: "Invalid Project Id" }),
+                    beginButton: new sap.m.Button({
+                        text: "OK",
+                        press: function () {
+                            oErrorDialog.close();
+                        }
+                    }),
+                    afterClose: function () {
+                        oErrorDialog.destroy(); // clean up
+                    }
+                });
+
+                // Open the dialog
+                oErrorDialog.open();
+
             }
             debugger
         },
