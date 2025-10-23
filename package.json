@@ -11,6 +11,7 @@
     "@sap-cloud-sdk/resilience": "^4.1.1",
     "@sap/cds": "^9",
     "@sap/hdi-deploy": "^5.5.1",
+    "cors": "^2.8.5",
     "express": "^4",
     "hdb": "^0.19.12",
     "path": "^0.12.7",

@@ -30,7 +30,9 @@ sap.ui.define([
             oFunction.setParameter('project', projectId);
             oFunction.setParameter('user', userEmail);
             await oFunction.execute();
+            debugger
             var oContext = oFunction.getBoundContext().getValue();
+            debugger;
             function loadErrPage(that) {
                 debugger
                 that.getView().getContent()[0].mAggregations.content[0].setIllustrationType('sapIllus-ErrorScreen');

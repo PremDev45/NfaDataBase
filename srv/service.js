@@ -184,12 +184,17 @@ if (isMainThread) {
 
             /////////////////////////////////////////Variables Declaration////////////////////////////////////////////////
 
+            /////////////////////////////////// to check iflow ////////////////////////
+
             var SupplierQuestionariesBody = {
                 ...SupplierQuestionariesBase,
                 url: SupplierQuestionariesUrl.replace("<vendorId>", "S10753627")
             }
 
+            /////////////////////////////////// to check iflow ////////////////////////
             var result = await NfaAriba.post('/', SupplierQuestionariesBody);
+
+
             const createWorker = function (url, securityMaterial, path) {
                 return new Promise((resolve) => {
                     const worker = new Worker(__filename, {
@@ -210,8 +215,10 @@ if (isMainThread) {
                 }
                 console.log("SourcingProjectDocsBody", SourcingProjectDocsBody)
                 SourcingProjectDocsResult = await NfaAriba.post('/', SourcingProjectDocsBody);
+                console.log("jdhehwgewjhgkwegrjewgrkewjjgrewkrgewrwekgrew", SourcingProjectDocsResult.payload[0].type, SourcingProjectDocsResult.payload[0].status);
 
                 if (SourcingProjectDocsResult.payload[0].type == 'RFx' && SourcingProjectDocsResult.payload[0].status != 'Draft') {
+                    console.log("jdhehwgewjhgkwegrjewgrkewjjgrewkrgewrwekgrew")
                     DocId = SourcingProjectDocsResult.payload[0].internalId;
                     let extraFields = {
                         BaseLanguage: "",
@@ -245,8 +252,11 @@ if (isMainThread) {
                         extraFields.Owner = SourcingProjectDocsResult.payload[0].owner.name;
 
                     }
-                    else
-                        return 'No Data for this Project!'
+                    else {
+                        console.log('No Data for this Project!');
+                        return 'No Data for this Project!';
+
+                    }
 
                     projCurrency = DocumentUrlResult.currency || "";
                     if (DocumentUrlResult.openDate) {
@@ -275,6 +285,7 @@ if (isMainThread) {
                     };
 
                     NfaDetailsData = await SELECT.from('NfaDetails').where('TaskId =', TaskID);
+                    debugger
 
                     if (NfaDetailsData.length) {
                         console.log('RETURNING NFA NUMBER');
@@ -2795,7 +2806,7 @@ if (isMainThread) {
             }
             catch (e) {
                 console.log(e)
-                
+
             }
         });
 
